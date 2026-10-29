@@ -1,0 +1,25 @@
+<Project>
+  <PropertyGroup>
+    <!-- Базовые языковые настройки .NET 10 -->
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Метаданные решения -->
+    <Product>Авиакасса — Настольная система бронирования авиабилетов</Product>
+    <Authors>Antidot3310, savelka228228-dev</Authors>
+    <Company>Airline Ticket Office Team</Company>
+    <Version>1.0.0</Version>
+    <Copyright>© 2026</Copyright>
+
+    <!-- Общие флаги сборки -->
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!-- Оптимизация для Release-сборки -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+</Project>
