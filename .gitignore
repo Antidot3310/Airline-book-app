@@ -22,3 +22,6 @@
 ## OS generated
 .DS_Store
 Thumbs.db
+
+## Local Documentation
+docs/
