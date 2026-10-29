@@ -1,0 +1,44 @@
+# Root editorconfig for Airline Ticket Office (.NET 10 solution)
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.cs]
+# Code style rules
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:suggestion
+csharp_prefer_primary_constructors = false:suggestion
+csharp_style_collection_expression = true:suggestion
+
+# Naming conventions
+dotnet_naming_rule.interface_should_be_pascal_case.symbols = interface
+dotnet_naming_rule.interface_should_be_pascal_case.style = prefix_interface
+dotnet_naming_rule.interface_should_be_pascal_case.severity = warning
+
+dotnet_naming_symbols.interface.applicable_kinds = interface
+dotnet_naming_style.prefix_interface.required_prefix = I
+dotnet_naming_style.prefix_interface.capitalization = pascal_case
+
+dotnet_naming_rule.private_fields_should_be_underscored.symbols = private_fields
+dotnet_naming_rule.private_fields_should_be_underscored.style = prefix_underscore
+dotnet_naming_rule.private_fields_should_be_underscored.severity = warning
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.prefix_underscore.required_prefix = _
+dotnet_naming_style.prefix_underscore.capitalization = camel_case
+
+# XML documentation comments
+dotnet_diagnostic.CS1591.severity = suggestion
+
+# Nullable reference types
+dotnet_diagnostic.CS8618.severity = warning
+dotnet_diagnostic.CS8602.severity = warning
+dotnet_diagnostic.CS8603.severity = warning
