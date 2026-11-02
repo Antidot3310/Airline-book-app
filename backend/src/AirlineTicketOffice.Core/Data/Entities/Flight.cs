@@ -66,4 +66,9 @@ public class Flight
     /// Навигационная коллекция пассажирских мест рейса.
     /// </summary>
     public ICollection<FlightSeat> Seats { get; set; } = [];
+
+    /// <summary>
+    /// Навигационная коллекция билетов, оформленных на данный рейс.
+    /// </summary>
+    public ICollection<Ticket> Tickets { get; set; } = [];
 }
