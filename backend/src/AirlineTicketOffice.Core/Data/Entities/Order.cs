@@ -51,4 +51,9 @@ public class Order
     /// Навигационная коллекция билетов, включённых в данный заказ.
     /// </summary>
     public ICollection<Ticket> Tickets { get; set; } = [];
+
+    /// <summary>
+    /// Навигационная коллекция платежей, проведённых по данному заказу.
+    /// </summary>
+    public ICollection<Payment> Payments { get; set; } = [];
 }

@@ -71,4 +71,9 @@ public class Ticket
     /// Текущий статус билета.
     /// </summary>
     public TicketStatus Status { get; set; } = TicketStatus.Booked;
+
+    /// <summary>
+    /// Навигационное свойство записи возврата билета (при наличии).
+    /// </summary>
+    public Refund? Refund { get; set; }
 }
