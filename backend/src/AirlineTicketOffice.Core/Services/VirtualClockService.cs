@@ -3,6 +3,7 @@ using AirlineTicketOffice.Core.Contracts.Clock.Events;
 using AirlineTicketOffice.Core.Data;
 using AirlineTicketOffice.Core.Data.Entities;
 using AirlineTicketOffice.Core.Domain.Enums;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AirlineTicketOffice.Core.Services;
@@ -109,6 +110,7 @@ public class VirtualClockService : IVirtualClockService
         }
 
         OnTimeChanged(new VirtualTimeChangedEventArgs(newTime, oldTime));
+        TriggerScheduledJobs();
     }
 
     /// <inheritdoc />
@@ -141,12 +143,109 @@ public class VirtualClockService : IVirtualClockService
         }
 
         OnTimeChanged(new VirtualTimeChangedEventArgs(newTime, oldTime));
+        TriggerScheduledJobs();
     }
 
     /// <inheritdoc />
     public void TriggerScheduledJobs()
     {
-        // Заглушка: регламентные задачи (HoldsExpired, FlightStatusChanged) будут реализованы в Инкременте 11.
+        DateTime currentTime;
+        lock (_lock)
+        {
+            currentTime = _currentVirtualTime;
+        }
+
+        int expiredOrdersCount = 0;
+        int releasedSeatsCount = 0;
+        var departedFlightEvents = new List<(int FlightId, FlightStatus Status)>();
+
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AirlineDbContext>();
+
+            // А) Снятие просроченных броней
+            var expiredOrders = db.Orders
+                .Include(o => o.Tickets)
+                .Where(o => o.Status == OrderStatus.Created && o.HoldExpiresAt <= currentTime)
+                .ToList();
+
+            foreach (var order in expiredOrders)
+            {
+                order.Status = OrderStatus.Expired;
+                expiredOrdersCount++;
+
+                foreach (var ticket in order.Tickets.Where(t => t.Status == TicketStatus.Booked))
+                {
+                    ticket.Status = TicketStatus.Cancelled;
+                }
+            }
+
+            var heldSeats = db.FlightSeats
+                .Where(s => s.State == SeatState.Held && s.HoldUntilTime <= currentTime)
+                .ToList();
+
+            foreach (var seat in heldSeats)
+            {
+                seat.State = SeatState.Available;
+                seat.HoldUntilTime = null;
+                releasedSeatsCount++;
+            }
+
+            if (expiredOrdersCount > 0 || releasedSeatsCount > 0)
+            {
+                db.AuditLogs.Add(new AuditLog
+                {
+                    VirtualTime = currentTime,
+                    RealTime = DateTime.Now,
+                    Role = UserRole.System,
+                    ActionType = "ExpireHold",
+                    EntityName = "Order",
+                    Description = $"Сняты просроченные брони. Заказов: {expiredOrdersCount}, освобождено мест: {releasedSeatsCount}"
+                });
+            }
+
+            // Б) Автоматическая смена статусов вылетевших рейсов
+            var departedFlights = db.Flights
+                .Include(f => f.Tickets)
+                .Where(f => f.Status == FlightStatus.Scheduled && f.DepartureTime <= currentTime)
+                .ToList();
+
+            foreach (var flight in departedFlights)
+            {
+                flight.Status = FlightStatus.Departed;
+
+                var paidTickets = flight.Tickets.Where(t => t.Status == TicketStatus.Paid).ToList();
+                foreach (var ticket in paidTickets)
+                {
+                    ticket.Status = TicketStatus.Used;
+                }
+
+                db.AuditLogs.Add(new AuditLog
+                {
+                    VirtualTime = currentTime,
+                    RealTime = DateTime.Now,
+                    Role = UserRole.System,
+                    ActionType = "FlightDeparted",
+                    EntityName = "Flight",
+                    EntityId = flight.Id,
+                    Description = $"Рейс {flight.FlightNumber} переведён в статус 'Вылетел'. Использовано билетов: {paidTickets.Count}"
+                });
+
+                departedFlightEvents.Add((flight.Id, FlightStatus.Departed));
+            }
+
+            db.SaveChanges();
+        }
+
+        if (expiredOrdersCount > 0 || releasedSeatsCount > 0)
+        {
+            OnHoldsExpired(new HoldsExpiredEventArgs(expiredOrdersCount, releasedSeatsCount));
+        }
+
+        foreach (var (flightId, status) in departedFlightEvents)
+        {
+            OnFlightStatusChanged(new FlightStatusChangedEventArgs(flightId, status));
+        }
     }
 
     /// <summary>
