@@ -174,8 +174,69 @@ public class FlightService : IFlightService
         DateTime flightDate,
         int passengersCount)
     {
-        // Метод в разработке (Инкремент 17)
-        return [];
+        var targetDate = flightDate.Date;
+        var nextDate = targetDate.AddDays(1);
+
+        var flights = _dbContext.Flights
+            .AsNoTracking()
+            .Include(f => f.OriginAirport)
+            .Include(f => f.DestinationAirport)
+            .Include(f => f.Seats)
+            .Where(f => f.OriginAirportId == originAirportId
+                     && f.DestinationAirportId == destinationAirportId
+                     && f.DepartureTime >= targetDate
+                     && f.DepartureTime < nextDate
+                     && f.Status == FlightStatus.Scheduled)
+            .ToList();
+
+        var result = new List<FlightListItemDto>();
+
+        foreach (var flight in flights)
+        {
+            int economyAvailable = flight.Seats.Count(s => s.SeatClass == SeatClass.Economy && s.State == SeatState.Available);
+            int businessAvailable = flight.Seats.Count(s => s.SeatClass == SeatClass.Business && s.State == SeatState.Available);
+            int totalAvailable = economyAvailable + businessAvailable;
+
+            if (totalAvailable < passengersCount)
+            {
+                continue;
+            }
+
+            decimal minPrice;
+            if (economyAvailable > 0)
+            {
+                minPrice = _tariffCalculator.CalculateTicketPrice(
+                    flight.OriginAirportId,
+                    flight.DestinationAirportId,
+                    SeatClass.Economy,
+                    flight.DepartureTime,
+                    hasBaggage: false);
+            }
+            else
+            {
+                minPrice = _tariffCalculator.CalculateTicketPrice(
+                    flight.OriginAirportId,
+                    flight.DestinationAirportId,
+                    SeatClass.Business,
+                    flight.DepartureTime,
+                    hasBaggage: false);
+            }
+
+            result.Add(new FlightListItemDto
+            {
+                Id = flight.Id,
+                FlightNumber = flight.FlightNumber,
+                Route = $"{flight.OriginAirport?.Code ?? string.Empty} -> {flight.DestinationAirport?.Code ?? string.Empty}",
+                DepartureTime = flight.DepartureTime,
+                ArrivalTime = flight.ArrivalTime,
+                Status = flight.Status,
+                EconomySeatsAvailable = economyAvailable,
+                BusinessSeatsAvailable = businessAvailable,
+                MinPrice = minPrice
+            });
+        }
+
+        return result.OrderBy(f => f.DepartureTime).ToList();
     }
 
     /// <inheritdoc />

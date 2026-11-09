@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using AirlineTicketOffice.Core.Contracts.Flights;
 using AirlineTicketOffice.Core.Data;
+using AirlineTicketOffice.Core.Data.Entities;
 using AirlineTicketOffice.Core.Domain.Enums;
 using AirlineTicketOffice.Core.Services;
 using Microsoft.Data.Sqlite;
@@ -207,5 +208,108 @@ public class FlightServiceTests : IDisposable
         Assert.Equal(87, details.TotalSeats);
         Assert.Equal(87, details.AvailableSeats);
         Assert.Equal(FlightStatus.Scheduled, details.Status);
+    }
+
+    [Fact]
+    public void SearchFlights_MatchingRouteAndDate_ReturnsAvailableFlightsWithMinPrice()
+    {
+        // Arrange
+        var clockService = new VirtualClockService(_scopeFactory);
+        var auditService = new AuditLogService(_dbContext);
+        var tariffCalculator = new TariffCalculator(_dbContext, clockService, auditService);
+        var flightService = new FlightService(_dbContext, clockService, tariffCalculator, auditService);
+
+        var svo = _dbContext.Airports.First(a => a.Code == "SVO");
+        var led = _dbContext.Airports.First(a => a.Code == "LED");
+        var flightDate = new DateTime(2026, 11, 2);
+
+        // Act
+        var results = flightService.SearchFlights(svo.Id, led.Id, flightDate, passengersCount: 1);
+
+        // Assert
+        Assert.Single(results);
+        var flight = results[0];
+        Assert.Equal("SU-101", flight.FlightNumber);
+        Assert.Equal("SVO -> LED", flight.Route);
+        Assert.True(flight.EconomySeatsAvailable > 0);
+        Assert.True(flight.BusinessSeatsAvailable > 0);
+        Assert.True(flight.MinPrice == 8100.00m || flight.MinPrice == 4500.00m);
+    }
+
+    [Fact]
+    public void SearchFlights_WhenFlightIsCancelledOrDeparted_ExcludesFromResults()
+    {
+        // Arrange
+        var clockService = new VirtualClockService(_scopeFactory);
+        var auditService = new AuditLogService(_dbContext);
+        var tariffCalculator = new TariffCalculator(_dbContext, clockService, auditService);
+        var flightService = new FlightService(_dbContext, clockService, tariffCalculator, auditService);
+
+        var svo = _dbContext.Airports.First(a => a.Code == "SVO");
+        var led = _dbContext.Airports.First(a => a.Code == "LED");
+        var flightDate = new DateTime(2026, 11, 2);
+
+        // Создаём второй рейс на ту же дату, но в статусе Cancelled
+        var aircraft = _dbContext.Aircrafts.First(a => a.TailNumber == "RA-73015");
+        var cancelledFlight = new Flight
+        {
+            FlightNumber = "SU-199",
+            OriginAirportId = svo.Id,
+            DestinationAirportId = led.Id,
+            AircraftId = aircraft.Id,
+            DepartureTime = new DateTime(2026, 11, 2, 22, 0, 0),
+            ArrivalTime = new DateTime(2026, 11, 2, 23, 30, 0),
+            Status = FlightStatus.Cancelled
+        };
+        _dbContext.Flights.Add(cancelledFlight);
+        _dbContext.SaveChanges();
+
+        // Act
+        var results = flightService.SearchFlights(svo.Id, led.Id, flightDate, passengersCount: 1);
+
+        // Assert
+        Assert.Single(results);
+        Assert.Equal("SU-101", results[0].FlightNumber);
+        Assert.Equal(FlightStatus.Scheduled, results[0].Status);
+    }
+
+    [Fact]
+    public void SearchFlights_WhenNotEnoughSeatsForPassengersCount_ExcludesFromResults()
+    {
+        // Arrange
+        var clockService = new VirtualClockService(_scopeFactory);
+        var auditService = new AuditLogService(_dbContext);
+        var tariffCalculator = new TariffCalculator(_dbContext, clockService, auditService);
+        var flightService = new FlightService(_dbContext, clockService, tariffCalculator, auditService);
+
+        var svo = _dbContext.Airports.First(a => a.Code == "SVO");
+        var led = _dbContext.Airports.First(a => a.Code == "LED");
+        var flightDate = new DateTime(2026, 11, 2);
+
+        // Act (у рейса SU-101 всего 87 мест, запрашиваем 100)
+        var results = flightService.SearchFlights(svo.Id, led.Id, flightDate, passengersCount: 100);
+
+        // Assert
+        Assert.Empty(results);
+    }
+
+    [Fact]
+    public void SearchFlights_OnDifferentDate_ReturnsEmptyList()
+    {
+        // Arrange
+        var clockService = new VirtualClockService(_scopeFactory);
+        var auditService = new AuditLogService(_dbContext);
+        var tariffCalculator = new TariffCalculator(_dbContext, clockService, auditService);
+        var flightService = new FlightService(_dbContext, clockService, tariffCalculator, auditService);
+
+        var svo = _dbContext.Airports.First(a => a.Code == "SVO");
+        var led = _dbContext.Airports.First(a => a.Code == "LED");
+        var differentDate = new DateTime(2026, 12, 1);
+
+        // Act
+        var results = flightService.SearchFlights(svo.Id, led.Id, differentDate, passengersCount: 1);
+
+        // Assert
+        Assert.Empty(results);
     }
 }
