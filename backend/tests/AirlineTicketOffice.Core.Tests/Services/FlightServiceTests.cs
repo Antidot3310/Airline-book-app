@@ -312,4 +312,189 @@ public class FlightServiceTests : IDisposable
         // Assert
         Assert.Empty(results);
     }
+
+    [Fact]
+    public void ChangeAircraft_WhenNoTicketsSold_ReplacesSeatsGrid_MatchesTC09()
+    {
+        // Arrange
+        var clockService = new VirtualClockService(_scopeFactory);
+        var auditService = new AuditLogService(_dbContext);
+        var tariffCalculator = new TariffCalculator(_dbContext, clockService, auditService);
+        var flightService = new FlightService(_dbContext, clockService, tariffCalculator, auditService);
+
+        var svo = _dbContext.Airports.First(a => a.Code == "SVO");
+        var led = _dbContext.Airports.First(a => a.Code == "LED");
+        var ssj = _dbContext.Aircrafts.First(a => a.TailNumber == "RA-89014"); // SSJ-100 (87 seats)
+        var a320 = _dbContext.Aircrafts.First(a => a.TailNumber == "RA-73015"); // A320 (150 seats)
+
+        var request = new CreateFlightRequest
+        {
+            FlightNumber = "SU-701",
+            OriginAirportId = svo.Id,
+            DestinationAirportId = led.Id,
+            AircraftId = ssj.Id,
+            DepartureTime = clockService.CurrentVirtualTime.AddDays(5),
+            ArrivalTime = clockService.CurrentVirtualTime.AddDays(5).AddHours(2)
+        };
+        var createResult = flightService.CreateFlight(request);
+        Assert.True(createResult.IsSuccess);
+        int flightId = createResult.Value;
+
+        // Act
+        var result = flightService.ChangeAircraft(flightId, a320.Id);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        var updatedFlight = _dbContext.Flights.Include(f => f.Seats).First(f => f.Id == flightId);
+        Assert.Equal(a320.Id, updatedFlight.AircraftId);
+        Assert.Equal(150, updatedFlight.Seats.Count);
+        Assert.All(updatedFlight.Seats, s => Assert.Equal(SeatState.Available, s.State));
+    }
+
+    [Fact]
+    public void ChangeAircraft_WhenTicketsExist_ReturnsFailure_MatchesTC10()
+    {
+        // Arrange
+        var clockService = new VirtualClockService(_scopeFactory);
+        var auditService = new AuditLogService(_dbContext);
+        var tariffCalculator = new TariffCalculator(_dbContext, clockService, auditService);
+        var flightService = new FlightService(_dbContext, clockService, tariffCalculator, auditService);
+
+        var svo = _dbContext.Airports.First(a => a.Code == "SVO");
+        var led = _dbContext.Airports.First(a => a.Code == "LED");
+        var ssj = _dbContext.Aircrafts.First(a => a.TailNumber == "RA-89014");
+        var a320 = _dbContext.Aircrafts.First(a => a.TailNumber == "RA-73015");
+
+        var request = new CreateFlightRequest
+        {
+            FlightNumber = "SU-702",
+            OriginAirportId = svo.Id,
+            DestinationAirportId = led.Id,
+            AircraftId = ssj.Id,
+            DepartureTime = clockService.CurrentVirtualTime.AddDays(5),
+            ArrivalTime = clockService.CurrentVirtualTime.AddDays(5).AddHours(2)
+        };
+        var createResult = flightService.CreateFlight(request);
+        Assert.True(createResult.IsSuccess);
+        int flightId = createResult.Value;
+
+        // Добавляем оплаченный билет на рейс (кейс TC-10)
+        var client = new Client { FullName = "Иван Иванов", DocumentNumber = "1234 567890" };
+        _dbContext.Clients.Add(client);
+        var order = new Order
+        {
+            OrderNumber = "ORD-TC10",
+            Channel = OrderChannel.SelfService,
+            CreatedRole = UserRole.Passenger,
+            CreatedAt = clockService.CurrentVirtualTime,
+            HoldExpiresAt = clockService.CurrentVirtualTime.AddMinutes(15),
+            Status = OrderStatus.Paid,
+            TotalAmount = 4500.00m
+        };
+        _dbContext.Orders.Add(order);
+
+        var seat = _dbContext.FlightSeats.First(s => s.FlightId == flightId);
+        seat.State = SeatState.Sold;
+
+        var ticket = new Ticket
+        {
+            TicketNumber = "TKT-TC10",
+            OrderId = order.Id,
+            Order = order,
+            ClientId = client.Id,
+            Client = client,
+            FlightId = flightId,
+            FlightSeatId = seat.Id,
+            FlightSeat = seat,
+            Price = 4500.00m,
+            HasBaggage = false,
+            Status = TicketStatus.Paid
+        };
+        _dbContext.Tickets.Add(ticket);
+        _dbContext.SaveChanges();
+
+        // Act
+        var result = flightService.ChangeAircraft(flightId, a320.Id);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal("Смена воздушного судна запрещена: на рейс уже проданы билеты.", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void ChangeAircraft_WhenNewAircraftInMaintenance_ReturnsFailure()
+    {
+        // Arrange
+        var clockService = new VirtualClockService(_scopeFactory);
+        var auditService = new AuditLogService(_dbContext);
+        var tariffCalculator = new TariffCalculator(_dbContext, clockService, auditService);
+        var flightService = new FlightService(_dbContext, clockService, tariffCalculator, auditService);
+
+        var svo = _dbContext.Airports.First(a => a.Code == "SVO");
+        var led = _dbContext.Airports.First(a => a.Code == "LED");
+        var ssj = _dbContext.Aircrafts.First(a => a.TailNumber == "RA-89014");
+        var maintenanceAircraft = _dbContext.Aircrafts.First(a => a.TailNumber == "RA-89088"); // Maintenance
+
+        var request = new CreateFlightRequest
+        {
+            FlightNumber = "SU-703",
+            OriginAirportId = svo.Id,
+            DestinationAirportId = led.Id,
+            AircraftId = ssj.Id,
+            DepartureTime = clockService.CurrentVirtualTime.AddDays(5),
+            ArrivalTime = clockService.CurrentVirtualTime.AddDays(5).AddHours(2)
+        };
+        var createResult = flightService.CreateFlight(request);
+        int flightId = createResult.Value;
+
+        // Act
+        var result = flightService.ChangeAircraft(flightId, maintenanceAircraft.Id);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal("Самолёт находится на техническом обслуживании и не может быть назначен на рейс.", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void CancelFlight_ScheduledFlight_CancelsAndBlocksAllSeats()
+    {
+        // Arrange
+        var clockService = new VirtualClockService(_scopeFactory);
+        var auditService = new AuditLogService(_dbContext);
+        var tariffCalculator = new TariffCalculator(_dbContext, clockService, auditService);
+        var flightService = new FlightService(_dbContext, clockService, tariffCalculator, auditService);
+
+        var flight = _dbContext.Flights.Include(f => f.Seats).First(f => f.FlightNumber == "SU-101");
+        Assert.Equal(FlightStatus.Scheduled, flight.Status);
+
+        // Act
+        var result = flightService.CancelFlight(flight.Id);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        var updatedFlight = _dbContext.Flights.Include(f => f.Seats).First(f => f.Id == flight.Id);
+        Assert.Equal(FlightStatus.Cancelled, updatedFlight.Status);
+        Assert.All(updatedFlight.Seats, s => Assert.Equal(SeatState.Blocked, s.State));
+    }
+
+    [Fact]
+    public void CancelFlight_DepartedFlight_ReturnsFailure()
+    {
+        // Arrange
+        var clockService = new VirtualClockService(_scopeFactory);
+        var auditService = new AuditLogService(_dbContext);
+        var tariffCalculator = new TariffCalculator(_dbContext, clockService, auditService);
+        var flightService = new FlightService(_dbContext, clockService, tariffCalculator, auditService);
+
+        var flight = _dbContext.Flights.First(f => f.FlightNumber == "SU-102");
+        flight.Status = FlightStatus.Departed;
+        _dbContext.SaveChanges();
+
+        // Act
+        var result = flightService.CancelFlight(flight.Id);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal("Невозможно отменить рейс: рейс уже вылетел.", result.ErrorMessage);
+    }
 }

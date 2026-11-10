@@ -242,15 +242,107 @@ public class FlightService : IFlightService
     /// <inheritdoc />
     public Result ChangeAircraft(int flightId, int newAircraftId)
     {
-        // Метод в разработке (Инкремент 18)
-        return Result.Failure("Метод в разработке (Инкремент 18).");
+        var flight = _dbContext.Flights
+            .Include(f => f.Seats)
+            .FirstOrDefault(f => f.Id == flightId);
+
+        if (flight is null)
+        {
+            return Result.Failure("Рейс не найден.");
+        }
+
+        if (flight.Status != FlightStatus.Scheduled)
+        {
+            return Result.Failure("Невозможно сменить самолёт: рейс уже завершён или отменён.");
+        }
+
+        bool hasTickets = _dbContext.Tickets.Any(t => t.FlightId == flightId && (t.Status == TicketStatus.Paid || t.Status == TicketStatus.Booked));
+        if (hasTickets)
+        {
+            return Result.Failure("Смена воздушного судна запрещена: на рейс уже проданы билеты.");
+        }
+
+        var newAircraft = _dbContext.Aircrafts
+            .Include(a => a.AircraftType)
+            .FirstOrDefault(a => a.Id == newAircraftId);
+
+        if (newAircraft is null || !newAircraft.IsActive)
+        {
+            return Result.Failure("Самолёт не найден или деактивирован.");
+        }
+
+        if (newAircraft.Status == AircraftStatus.Maintenance)
+        {
+            return Result.Failure("Самолёт находится на техническом обслуживании и не может быть назначен на рейс.");
+        }
+
+        if (newAircraft.Status != AircraftStatus.InService)
+        {
+            return Result.Failure("Самолёт недоступен для назначения на рейс.");
+        }
+
+        if (newAircraft.AircraftType is null)
+        {
+            return Result.Failure("Тип воздушного судна для указанного самолёта не определён.");
+        }
+
+        _dbContext.FlightSeats.RemoveRange(flight.Seats);
+        flight.Seats.Clear();
+
+        flight.AircraftId = newAircraft.Id;
+        flight.Aircraft = newAircraft;
+
+        GenerateSeatsForFlight(flight, newAircraft.AircraftType);
+
+        _dbContext.SaveChanges();
+
+        _auditLogService.Log(
+            "ChangeAircraft",
+            nameof(Flight),
+            flight.Id,
+            $"Самолёт на рейсе {flight.FlightNumber} изменён на {newAircraft.TailNumber}. Перегенерировано мест: {flight.Seats.Count}");
+
+        return Result.Success();
     }
 
     /// <inheritdoc />
     public Result CancelFlight(int flightId)
     {
-        // Метод в разработке (Инкремент 18)
-        return Result.Failure("Метод в разработке (Инкремент 18).");
+        var flight = _dbContext.Flights
+            .Include(f => f.Seats)
+            .FirstOrDefault(f => f.Id == flightId);
+
+        if (flight is null)
+        {
+            return Result.Failure("Рейс не найден.");
+        }
+
+        if (flight.Status == FlightStatus.Departed)
+        {
+            return Result.Failure("Невозможно отменить рейс: рейс уже вылетел.");
+        }
+
+        if (flight.Status == FlightStatus.Cancelled)
+        {
+            return Result.Failure("Рейс уже отменён.");
+        }
+
+        flight.Status = FlightStatus.Cancelled;
+
+        foreach (var seat in flight.Seats)
+        {
+            seat.State = SeatState.Blocked;
+        }
+
+        _dbContext.SaveChanges();
+
+        _auditLogService.Log(
+            "CancelFlight",
+            nameof(Flight),
+            flight.Id,
+            $"Рейс {flight.FlightNumber} отменён администратором. Места заблокированы.");
+
+        return Result.Success();
     }
 
     private static void GenerateSeatsForFlight(Flight flight, AircraftType type)
