@@ -111,13 +111,95 @@ public class BookingService : IBookingService
     /// <inheritdoc />
     public Result<HoldSeatsResultDto> HoldSeats(int flightId, IReadOnlyList<string> seatNumbers)
     {
-        return Result<HoldSeatsResultDto>.Failure("Метод будет реализован в Инкременте 20.");
+        if (seatNumbers is null || seatNumbers.Count == 0 || seatNumbers.Count > 5)
+        {
+            return Result<HoldSeatsResultDto>.Failure("В одном заказе может быть выбрано от 1 до 5 мест.");
+        }
+
+        if (seatNumbers.Distinct(StringComparer.OrdinalIgnoreCase).Count() != seatNumbers.Count)
+        {
+            return Result<HoldSeatsResultDto>.Failure("Список мест содержит дубликаты.");
+        }
+
+        var flight = _dbContext.Flights.FirstOrDefault(f => f.Id == flightId);
+        if (flight is null)
+        {
+            return Result<HoldSeatsResultDto>.Failure($"Рейс с идентификатором {flightId} не найден.");
+        }
+
+        if (flight.Status != FlightStatus.Scheduled)
+        {
+            return Result<HoldSeatsResultDto>.Failure("Бронирование мест доступно только для запланированных рейсов.");
+        }
+
+        using var transaction = _dbContext.Database.BeginTransaction();
+
+        var seats = _dbContext.FlightSeats
+            .Where(s => s.FlightId == flightId && seatNumbers.Contains(s.SeatNumber))
+            .ToList();
+
+        if (seats.Count != seatNumbers.Count)
+        {
+            transaction.Rollback();
+            return Result<HoldSeatsResultDto>.Failure("Одно или несколько указанных мест не существуют на данном рейсе.");
+        }
+
+        var currentVirtualTime = _clockService.CurrentVirtualTime;
+
+        foreach (var seat in seats)
+        {
+            bool isAvailable = seat.State == SeatState.Available ||
+                (seat.State == SeatState.Held && seat.HoldUntilTime.HasValue && seat.HoldUntilTime.Value <= currentVirtualTime);
+
+            if (!isAvailable)
+            {
+                transaction.Rollback();
+                return Result<HoldSeatsResultDto>.Failure("Одно или несколько выбранных мест уже заняты.");
+            }
+        }
+
+        var holdUntil = currentVirtualTime.AddMinutes(15);
+
+        foreach (var seat in seats)
+        {
+            seat.State = SeatState.Held;
+            seat.HoldUntilTime = holdUntil;
+        }
+
+        _dbContext.SaveChanges();
+        transaction.Commit();
+
+        return Result<HoldSeatsResultDto>.Success(new HoldSeatsResultDto
+        {
+            FlightId = flightId,
+            SeatNumbers = seatNumbers.ToList(),
+            HoldUntilTime = holdUntil
+        });
     }
 
     /// <inheritdoc />
     public Result ReleaseSeats(int flightId, IReadOnlyList<string> seatNumbers)
     {
-        return Result.Failure("Метод будет реализован в Инкременте 20.");
+        if (seatNumbers is null || seatNumbers.Count == 0)
+        {
+            return Result.Success();
+        }
+
+        var seats = _dbContext.FlightSeats
+            .Where(s => s.FlightId == flightId && seatNumbers.Contains(s.SeatNumber))
+            .ToList();
+
+        foreach (var seat in seats)
+        {
+            if (seat.State == SeatState.Held)
+            {
+                seat.State = SeatState.Available;
+                seat.HoldUntilTime = null;
+            }
+        }
+
+        _dbContext.SaveChanges();
+        return Result.Success();
     }
 
     /// <summary>
