@@ -48,4 +48,11 @@ public interface IOrderTicketService
     /// </summary>
     /// <returns>Список DTO заказов текущей сессии.</returns>
     IReadOnlyList<OrderDto> GetOrdersForCurrentSession();
+
+    /// <summary>
+    /// Выполняет поиск и аннулирование всех заказов, срок удержания мест по которым истёк.
+    /// Освобождает удерживаемые места и переводит билеты в статус Cancelled.
+    /// </summary>
+    /// <returns>Количество аннулированных просроченных заказов.</returns>
+    int ExpireOverdueOrders();
 }

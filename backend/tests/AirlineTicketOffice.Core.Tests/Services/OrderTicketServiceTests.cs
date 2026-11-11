@@ -20,6 +20,8 @@ public class OrderTicketServiceTests : IDisposable
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly AirlineDbContext _dbContext;
 
+    private readonly List<IDisposable> _extraDisposables = [];
+
     public OrderTicketServiceTests()
     {
         var services = new ServiceCollection();
@@ -40,6 +42,11 @@ public class OrderTicketServiceTests : IDisposable
 
     public void Dispose()
     {
+        foreach (var item in _extraDisposables)
+        {
+            item.Dispose();
+        }
+
         _dbContext.Dispose();
         _serviceProvider.Dispose();
         _connection.Dispose();
@@ -54,6 +61,33 @@ public class OrderTicketServiceTests : IDisposable
         var tariffCalculator = new TariffCalculator(_dbContext, clockService, auditService);
 
         return new OrderTicketService(_dbContext, tariffCalculator, clockService, sessionService, auditService);
+    }
+
+    private (OrderTicketService Service, VirtualClockService ClockService) CreateServiceWithClock(UserRole role = UserRole.Passenger)
+    {
+        var isolatedServices = new ServiceCollection();
+        var clockConn = new SqliteConnection("DataSource=:memory:");
+        clockConn.Open();
+        isolatedServices.AddDbContext<AirlineDbContext>(opt => opt.UseSqlite(clockConn));
+        var clockProvider = isolatedServices.BuildServiceProvider();
+        var clockDb = clockProvider.GetRequiredService<AirlineDbContext>();
+        clockDb.Database.EnsureCreated();
+        DbInitializer.Initialize(clockDb);
+
+        _extraDisposables.Add(clockDb);
+        _extraDisposables.Add(clockProvider);
+        _extraDisposables.Add(clockConn);
+
+        var clockScopeFactory = clockProvider.GetRequiredService<IServiceScopeFactory>();
+        var clockService = new VirtualClockService(clockScopeFactory);
+
+        var auditService = new AuditLogService(_dbContext);
+        var sessionService = new SessionService(auditService);
+        sessionService.OpenSession(role);
+        var tariffCalculator = new TariffCalculator(_dbContext, clockService, auditService);
+
+        var service = new OrderTicketService(_dbContext, tariffCalculator, clockService, sessionService, auditService);
+        return (service, clockService);
     }
 
     [Fact]
@@ -413,5 +447,147 @@ public class OrderTicketServiceTests : IDisposable
         // Assert
         Assert.True(secondCancel.IsFailure);
         Assert.Equal("Заказ уже отменён.", secondCancel.ErrorMessage);
+    }
+
+    [Fact]
+    public void ExpireOverdueOrders_WhenHoldExpired_CancelsTicketsSetsOrderExpiredAndFreesSeatsMatchesTC04B()
+    {
+        // Arrange
+        var (service, clockService) = CreateServiceWithClock(UserRole.Passenger);
+        var flight = _dbContext.Flights.First(f => f.FlightNumber == "SU-101");
+
+        var createResult = service.CreateOrderWithBooking(new CreateOrderRequest
+        {
+            FlightId = flight.Id,
+            Passengers =
+            [
+                new() { FullName = "Иван Просроченный", DocumentNumber = "DOC-EXP1", SeatNumber = "4A" },
+                new() { FullName = "Петр Просроченный", DocumentNumber = "DOC-EXP2", SeatNumber = "4C" }
+            ]
+        });
+
+        Assert.True(createResult.IsSuccess);
+        int orderId = createResult.Value.Id;
+
+        // Сдвигаем виртуальное время на +16 минут (срок 15 минут истёк, TC-04Б)
+        clockService.AdvanceTime(TimeSpan.FromMinutes(16));
+
+        // Act
+        int expiredCount = service.ExpireOverdueOrders();
+
+        // Assert (TC-04Б)
+        Assert.Equal(1, expiredCount);
+
+        var orderInDb = _dbContext.Orders.Include(o => o.Tickets).First(o => o.Id == orderId);
+        Assert.Equal(OrderStatus.Expired, orderInDb.Status);
+        Assert.Equal(2, orderInDb.Tickets.Count);
+        Assert.All(orderInDb.Tickets, t => Assert.Equal(TicketStatus.Cancelled, t.Status));
+
+        var seats = _dbContext.FlightSeats
+            .Where(s => s.FlightId == flight.Id && (s.SeatNumber == "4A" || s.SeatNumber == "4C"))
+            .ToList();
+
+        Assert.Equal(2, seats.Count);
+        Assert.All(seats, s =>
+        {
+            Assert.Equal(SeatState.Available, s.State);
+            Assert.Null(s.HoldUntilTime);
+        });
+
+        var auditLog = _dbContext.AuditLogs.FirstOrDefault(l => l.ActionType == "ExpireOrders");
+        Assert.NotNull(auditLog);
+    }
+
+    [Fact]
+    public void ExpireOverdueOrders_WhenHoldNotExpired_DoesNotExpireOrderMatchesTC04A()
+    {
+        // Arrange
+        var (service, clockService) = CreateServiceWithClock(UserRole.Passenger);
+        var flight = _dbContext.Flights.First(f => f.FlightNumber == "SU-101");
+
+        var createResult = service.CreateOrderWithBooking(new CreateOrderRequest
+        {
+            FlightId = flight.Id,
+            Passengers =
+            [
+                new() { FullName = "Иван Активный", DocumentNumber = "DOC-ACT", SeatNumber = "4A" }
+            ]
+        });
+
+        Assert.True(createResult.IsSuccess);
+        int orderId = createResult.Value.Id;
+
+        // Сдвигаем время на 14 минут 50 секунд (срок 15 минут ещё не вышел, TC-04А)
+        clockService.AdvanceTime(TimeSpan.FromMinutes(14).Add(TimeSpan.FromSeconds(50)));
+
+        // Act
+        int expiredCount = service.ExpireOverdueOrders();
+
+        // Assert (TC-04А)
+        Assert.Equal(0, expiredCount);
+
+        var orderInDb = _dbContext.Orders.First(o => o.Id == orderId);
+        Assert.Equal(OrderStatus.Created, orderInDb.Status);
+
+        var seat = _dbContext.FlightSeats.First(s => s.FlightId == flight.Id && s.SeatNumber == "4A");
+        Assert.Equal(SeatState.Held, seat.State);
+    }
+
+    [Fact]
+    public void GetTicketsByClientDocument_WhenPassengerHasMultipleTickets_ReturnsAllTicketsSorted()
+    {
+        // Arrange
+        var service = CreateService(UserRole.Passenger);
+        var flight = _dbContext.Flights.First(f => f.FlightNumber == "SU-101");
+        string docNumber = "PASSPORT-MULTI-999";
+
+        var order1 = service.CreateOrderWithBooking(new CreateOrderRequest
+        {
+            FlightId = flight.Id,
+            Passengers =
+            [
+                new() { FullName = "Многократный Пассажир", DocumentNumber = docNumber, SeatNumber = "4A" }
+            ]
+        });
+        Assert.True(order1.IsSuccess);
+
+        var order2 = service.CreateOrderWithBooking(new CreateOrderRequest
+        {
+            FlightId = flight.Id,
+            Passengers =
+            [
+                new() { FullName = "Многократный Пассажир", DocumentNumber = docNumber, SeatNumber = "4C" }
+            ]
+        });
+        Assert.True(order2.IsSuccess);
+
+        // Act (тестируем также обрезку пробелов)
+        var tickets = service.GetTicketsByClientDocument($"  {docNumber}  ");
+
+        // Assert
+        Assert.Equal(2, tickets.Count);
+        Assert.All(tickets, t =>
+        {
+            Assert.Equal(docNumber, t.PassengerDocument);
+            Assert.Equal("Многократный Пассажир", t.PassengerName);
+            Assert.Equal("SU-101", t.FlightNumber);
+            Assert.Equal("SVO", t.OriginAirportCode);
+            Assert.Equal("LED", t.DestinationAirportCode);
+        });
+
+        Assert.Contains(tickets, t => t.SeatNumber == "4A");
+        Assert.Contains(tickets, t => t.SeatNumber == "4C");
+    }
+
+    [Fact]
+    public void GetTicketsByClientDocument_WhenDocumentNotFoundOrEmpty_ReturnsEmptyList()
+    {
+        // Arrange
+        var service = CreateService(UserRole.Passenger);
+
+        // Act & Assert
+        Assert.Empty(service.GetTicketsByClientDocument(string.Empty));
+        Assert.Empty(service.GetTicketsByClientDocument("   "));
+        Assert.Empty(service.GetTicketsByClientDocument("NON_EXISTING_DOCUMENT_NUMBER_12345"));
     }
 }

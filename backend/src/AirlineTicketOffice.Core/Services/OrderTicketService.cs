@@ -320,7 +320,8 @@ public class OrderTicketService : IOrderTicketService
     /// <inheritdoc />
     public IReadOnlyList<TicketDto> GetTicketsByClientDocument(string documentNumber)
     {
-        if (string.IsNullOrWhiteSpace(documentNumber))
+        var trimmedDoc = documentNumber?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedDoc))
         {
             return [];
         }
@@ -334,8 +335,9 @@ public class OrderTicketService : IOrderTicketService
                 .ThenInclude(f => f!.OriginAirport)
             .Include(t => t.Flight)
                 .ThenInclude(f => f!.DestinationAirport)
-            .Where(t => t.Client != null && t.Client.DocumentNumber == documentNumber)
-            .OrderByDescending(t => t.Id)
+            .Where(t => t.Client != null && t.Client.DocumentNumber == trimmedDoc)
+            .OrderByDescending(t => t.Flight != null ? t.Flight.DepartureTime : default)
+            .ThenByDescending(t => t.Id)
             .ToList();
 
         return tickets.Select(t => new TicketDto
@@ -359,6 +361,52 @@ public class OrderTicketService : IOrderTicketService
             OriginAirportCode = t.Flight?.OriginAirport?.Code ?? string.Empty,
             DestinationAirportCode = t.Flight?.DestinationAirport?.Code ?? string.Empty
         }).ToList();
+    }
+
+    /// <inheritdoc />
+    public int ExpireOverdueOrders()
+    {
+        var currentTime = _clockService.CurrentVirtualTime;
+
+        var overdueOrders = _dbContext.Orders
+            .Include(o => o.Tickets)
+                .ThenInclude(t => t.FlightSeat)
+            .Where(o => o.Status == OrderStatus.Created && o.HoldExpiresAt <= currentTime)
+            .ToList();
+
+        if (overdueOrders.Count == 0)
+        {
+            return 0;
+        }
+
+        using var transaction = _dbContext.Database.BeginTransaction();
+
+        foreach (var order in overdueOrders)
+        {
+            order.Status = OrderStatus.Expired;
+
+            foreach (var ticket in order.Tickets)
+            {
+                if (ticket.Status == TicketStatus.Booked)
+                {
+                    ticket.Status = TicketStatus.Cancelled;
+                }
+
+                if (ticket.FlightSeat != null && ticket.FlightSeat.State == SeatState.Held)
+                {
+                    ticket.FlightSeat.State = SeatState.Available;
+                    ticket.FlightSeat.HoldUntilTime = null;
+                }
+            }
+        }
+
+        _dbContext.SaveChanges();
+
+        _auditLogService.Log("ExpireOrders", "Order", null, $"Автоматически аннулировано просроченных заказов: {overdueOrders.Count}, освобождены места.");
+
+        transaction.Commit();
+
+        return overdueOrders.Count;
     }
 
     /// <inheritdoc />
