@@ -205,7 +205,61 @@ public class OrderTicketService : IOrderTicketService
     /// <inheritdoc />
     public Result CancelOrder(int orderId)
     {
-        return Result.Failure("Метод будет реализован в Инкременте 22.");
+        var order = _dbContext.Orders
+            .Include(o => o.Tickets)
+                .ThenInclude(t => t.FlightSeat)
+            .FirstOrDefault(o => o.Id == orderId);
+
+        if (order is null)
+        {
+            return Result.Failure($"Заказ с идентификатором {orderId} не найден.");
+        }
+
+        if (order.Status == OrderStatus.Paid)
+        {
+            return Result.Failure("Нельзя отменить уже оплаченный заказ. Для возврата билетов воспользуйтесь процедурой возврата.");
+        }
+
+        if (order.Status == OrderStatus.Cancelled)
+        {
+            return Result.Failure("Заказ уже отменён.");
+        }
+
+        if (order.Status == OrderStatus.Expired)
+        {
+            return Result.Failure("Срок бронирования заказа уже истёк.");
+        }
+
+        if (order.Status != OrderStatus.Created)
+        {
+            return Result.Failure($"Отмена заказа невозможна: заказ находится в статусе {order.Status}.");
+        }
+
+        using var transaction = _dbContext.Database.BeginTransaction();
+
+        order.Status = OrderStatus.Cancelled;
+
+        foreach (var ticket in order.Tickets)
+        {
+            if (ticket.Status == TicketStatus.Booked)
+            {
+                ticket.Status = TicketStatus.Cancelled;
+            }
+
+            if (ticket.FlightSeat != null && ticket.FlightSeat.State == SeatState.Held)
+            {
+                ticket.FlightSeat.State = SeatState.Available;
+                ticket.FlightSeat.HoldUntilTime = null;
+            }
+        }
+
+        _dbContext.SaveChanges();
+
+        _auditLogService.Log("CancelOrder", "Order", order.Id, $"Отменено бронирование заказа {order.OrderNumber}, освобождено мест: {order.Tickets.Count}.");
+
+        transaction.Commit();
+
+        return Result.Success();
     }
 
     /// <inheritdoc />

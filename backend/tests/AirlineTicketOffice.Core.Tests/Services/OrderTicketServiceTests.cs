@@ -286,4 +286,132 @@ public class OrderTicketServiceTests : IDisposable
         Assert.Equal("4A", tickets[0].SeatNumber);
         Assert.False(string.IsNullOrWhiteSpace(tickets[0].OrderNumber));
     }
+
+    [Fact]
+    public void CancelOrder_WhenOrderIsCreated_CancelsOrderAndReleasesHeldSeats()
+    {
+        // Arrange
+        var service = CreateService(UserRole.Passenger);
+        var flight = _dbContext.Flights.First(f => f.FlightNumber == "SU-101");
+
+        var createResult = service.CreateOrderWithBooking(new CreateOrderRequest
+        {
+            FlightId = flight.Id,
+            Passengers =
+            [
+                new() { FullName = "Пассажир 1", DocumentNumber = "DOC-C1", SeatNumber = "4A" },
+                new() { FullName = "Пассажир 2", DocumentNumber = "DOC-C2", SeatNumber = "4C" }
+            ]
+        });
+
+        Assert.True(createResult.IsSuccess);
+        int orderId = createResult.Value.Id;
+
+        // Act
+        var result = service.CancelOrder(orderId);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+
+        var orderInDb = _dbContext.Orders.Include(o => o.Tickets).First(o => o.Id == orderId);
+        Assert.Equal(OrderStatus.Cancelled, orderInDb.Status);
+        Assert.Equal(2, orderInDb.Tickets.Count);
+        Assert.All(orderInDb.Tickets, t => Assert.Equal(TicketStatus.Cancelled, t.Status));
+
+        var seats = _dbContext.FlightSeats
+            .Where(s => s.FlightId == flight.Id && (s.SeatNumber == "4A" || s.SeatNumber == "4C"))
+            .ToList();
+
+        Assert.Equal(2, seats.Count);
+        Assert.All(seats, s =>
+        {
+            Assert.Equal(SeatState.Available, s.State);
+            Assert.Null(s.HoldUntilTime);
+        });
+
+        var auditLog = _dbContext.AuditLogs.FirstOrDefault(l => l.ActionType == "CancelOrder" && l.EntityId == orderId);
+        Assert.NotNull(auditLog);
+    }
+
+    [Fact]
+    public void CancelOrder_WhenOrderDoesNotExist_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService(UserRole.Passenger);
+        int nonExistentId = 999999;
+
+        // Act
+        var result = service.CancelOrder(nonExistentId);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Contains("не найден", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void CancelOrder_WhenOrderIsPaid_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService(UserRole.Passenger);
+        var flight = _dbContext.Flights.First(f => f.FlightNumber == "SU-101");
+
+        var createResult = service.CreateOrderWithBooking(new CreateOrderRequest
+        {
+            FlightId = flight.Id,
+            Passengers =
+            [
+                new() { FullName = "Оплативший Пассажир", DocumentNumber = "DOC-PAID", SeatNumber = "4A" }
+            ]
+        });
+
+        Assert.True(createResult.IsSuccess);
+        int orderId = createResult.Value.Id;
+
+        var order = _dbContext.Orders.First(o => o.Id == orderId);
+        order.Status = OrderStatus.Paid;
+        _dbContext.SaveChanges();
+
+        // Act
+        var result = service.CancelOrder(orderId);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Contains("Нельзя отменить уже оплаченный заказ", result.ErrorMessage);
+
+        var orderInDb = _dbContext.Orders.First(o => o.Id == orderId);
+        Assert.Equal(OrderStatus.Paid, orderInDb.Status);
+
+        var seat = _dbContext.FlightSeats.First(s => s.FlightId == flight.Id && s.SeatNumber == "4A");
+        Assert.Equal(SeatState.Held, seat.State);
+    }
+
+    [Fact]
+    public void CancelOrder_WhenOrderAlreadyCancelled_ReturnsFailure()
+    {
+        // Arrange
+        var service = CreateService(UserRole.Passenger);
+        var flight = _dbContext.Flights.First(f => f.FlightNumber == "SU-101");
+
+        var createResult = service.CreateOrderWithBooking(new CreateOrderRequest
+        {
+            FlightId = flight.Id,
+            Passengers =
+            [
+                new() { FullName = "Отменяющий Пассажир", DocumentNumber = "DOC-CANCEL", SeatNumber = "4A" }
+            ]
+        });
+
+        Assert.True(createResult.IsSuccess);
+        int orderId = createResult.Value.Id;
+
+        var firstCancel = service.CancelOrder(orderId);
+        Assert.True(firstCancel.IsSuccess);
+
+        // Act
+        var secondCancel = service.CancelOrder(orderId);
+
+        // Assert
+        Assert.True(secondCancel.IsFailure);
+        Assert.Equal("Заказ уже отменён.", secondCancel.ErrorMessage);
+    }
 }
