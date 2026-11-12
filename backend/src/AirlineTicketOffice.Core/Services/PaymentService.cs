@@ -175,7 +175,16 @@ public class PaymentService : IPaymentService
     /// <inheritdoc />
     public Result<PaymentStatus> CheckPaymentStatus(int paymentId)
     {
-        return Result<PaymentStatus>.Failure("Метод будет реализован в Инкременте 27.");
+        Payment? payment = _dbContext.Payments
+            .AsNoTracking()
+            .FirstOrDefault(p => p.Id == paymentId);
+
+        if (payment is null)
+        {
+            return Result<PaymentStatus>.Failure($"Платёж с ID {paymentId} не найден.");
+        }
+
+        return Result<PaymentStatus>.Success(payment.Status);
     }
 
     private Result<Order> LoadAndValidateOrderForPayment(int orderId)

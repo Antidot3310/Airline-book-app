@@ -273,4 +273,33 @@ public class PaymentEmulatorTests : IDisposable
         Payment persistedPayment = _dbContext.Payments.First(p => p.Id == payment.Id);
         Assert.Equal(PaymentStatus.Success, persistedPayment.Status);
     }
+
+    [Fact]
+    public void ManuallyResolvePayment_WhenOrderAlreadyExpired_ReturnsFailure()
+    {
+        // Arrange
+        (PaymentEmulator emulator, VirtualClockService clockService, _) = CreateEmulator();
+        (Order order, Ticket ticket, FlightSeat seat, Payment payment) =
+            SeedOrderWithPayment(PaymentStatus.Indeterminate, clockService.CurrentVirtualTime);
+
+        order.Status = OrderStatus.Expired;
+        ticket.Status = TicketStatus.Cancelled;
+        seat.State = SeatState.Available;
+        seat.HoldUntilTime = null;
+        _dbContext.SaveChanges();
+
+        // Act
+        Result result = emulator.ManuallyResolvePayment(payment.Id, markSuccess: true);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Contains("Expired", result.ErrorMessage);
+
+        _dbContext.ChangeTracker.Clear();
+
+        Order persistedOrder = _dbContext.Orders.First(o => o.Id == order.Id);
+        Payment persistedPayment = _dbContext.Payments.First(p => p.Id == payment.Id);
+        Assert.Equal(OrderStatus.Expired, persistedOrder.Status);
+        Assert.Equal(PaymentStatus.Indeterminate, persistedPayment.Status);
+    }
 }

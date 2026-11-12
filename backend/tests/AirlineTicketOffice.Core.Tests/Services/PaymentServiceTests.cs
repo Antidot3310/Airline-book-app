@@ -560,4 +560,165 @@ public class PaymentServiceTests : IDisposable
         int paymentsCount = _dbContext.Payments.Count(p => p.OrderId == orderDto.Id);
         Assert.Equal(1, paymentsCount);
     }
+
+    [Fact]
+    public void PayWithCard_WhenEmulatorTimesOut_CreatesIndeterminatePaymentAndKeepsSeatsHeldMatchesTC15()
+    {
+        // Arrange
+        (PaymentService paymentService, PaymentEmulator emulator, OrderTicketService orderService, _, _) =
+            CreateServices();
+        emulator.Mode = PaymentEmulatorMode.Timeout;
+        OrderDto orderDto = CreateSampleOrder(orderService, "4A", "4C");
+        CardDetailsDto card = CreateValidCard();
+
+        // Act
+        Result<PaymentResultDto> result = paymentService.PayWithCard(orderDto.Id, card);
+
+        // Assert (TC-15)
+        Assert.True(result.IsSuccess);
+        Assert.Equal(PaymentStatus.Indeterminate, result.Value.Status);
+        Assert.Null(result.Value.ExternalTransactionId);
+
+        _dbContext.ChangeTracker.Clear();
+
+        Order persistedOrder = _dbContext.Orders
+            .Include(o => o.Tickets)
+                .ThenInclude(t => t.FlightSeat)
+            .Include(o => o.Payments)
+            .First(o => o.Id == orderDto.Id);
+
+        Assert.Equal(OrderStatus.Created, persistedOrder.Status);
+        Assert.All(persistedOrder.Tickets, ticket =>
+        {
+            Assert.Equal(TicketStatus.Booked, ticket.Status);
+            Assert.NotNull(ticket.FlightSeat);
+            Assert.Equal(SeatState.Held, ticket.FlightSeat.State);
+            Assert.NotNull(ticket.FlightSeat.HoldUntilTime);
+        });
+
+        Payment persistedPayment = Assert.Single(persistedOrder.Payments);
+        Assert.Equal(PaymentStatus.Indeterminate, persistedPayment.Status);
+
+        Result<PaymentResultDto> duplicateAttempt = paymentService.PayWithCard(orderDto.Id, card);
+        Assert.True(duplicateAttempt.IsFailure);
+        Assert.Contains("Indeterminate", duplicateAttempt.ErrorMessage);
+        Assert.Single(emulator.GetIncomingRequestsLog());
+    }
+
+    [Fact]
+    public void CheckPaymentStatus_And_ManualResolveSuccess_FullFlowMatchesTC15()
+    {
+        // Arrange
+        (PaymentService paymentService, PaymentEmulator emulator, OrderTicketService orderService, _, _) =
+            CreateServices();
+        emulator.Mode = PaymentEmulatorMode.Timeout;
+        OrderDto orderDto = CreateSampleOrder(orderService, "4A");
+        CardDetailsDto card = CreateValidCard();
+
+        // Act 1: попытка оплаты при таймауте шлюза
+        Result<PaymentResultDto> payResult = paymentService.PayWithCard(orderDto.Id, card);
+        Assert.True(payResult.IsSuccess);
+        int paymentId = payResult.Value.PaymentId;
+        Assert.Equal(PaymentStatus.Indeterminate, payResult.Value.Status);
+
+        // Act 2: проверка статуса до вмешательства оператора
+        Result<PaymentStatus> pendingStatus = paymentService.CheckPaymentStatus(paymentId);
+        Assert.True(pendingStatus.IsSuccess);
+        Assert.Equal(PaymentStatus.Indeterminate, pendingStatus.Value);
+
+        // Act 3: ручное подтверждение оператором в эмуляторе
+        Result resolveResult = emulator.ManuallyResolvePayment(paymentId, markSuccess: true);
+        Assert.True(resolveResult.IsSuccess);
+
+        // Act 4: повторная проверка статуса после резолва
+        Result<PaymentStatus> resolvedStatus = paymentService.CheckPaymentStatus(paymentId);
+
+        // Assert (TC-15)
+        Assert.True(resolvedStatus.IsSuccess);
+        Assert.Equal(PaymentStatus.Success, resolvedStatus.Value);
+
+        _dbContext.ChangeTracker.Clear();
+
+        Order persistedOrder = _dbContext.Orders
+            .Include(o => o.Tickets)
+                .ThenInclude(t => t.FlightSeat)
+            .First(o => o.Id == orderDto.Id);
+
+        Assert.Equal(OrderStatus.Paid, persistedOrder.Status);
+        Assert.All(persistedOrder.Tickets, ticket =>
+        {
+            Assert.Equal(TicketStatus.Paid, ticket.Status);
+            Assert.NotNull(ticket.FlightSeat);
+            Assert.Equal(SeatState.Sold, ticket.FlightSeat.State);
+            Assert.Null(ticket.FlightSeat.HoldUntilTime);
+        });
+    }
+
+    [Fact]
+    public void CheckPaymentStatus_WhenManualResolveRejected_ReturnsFailedAndAllowsRetry()
+    {
+        // Arrange
+        (PaymentService paymentService, PaymentEmulator emulator, OrderTicketService orderService, _, _) =
+            CreateServices();
+        emulator.Mode = PaymentEmulatorMode.Timeout;
+        OrderDto orderDto = CreateSampleOrder(orderService, "4A");
+        CardDetailsDto card = CreateValidCard();
+
+        Result<PaymentResultDto> timeoutResult = paymentService.PayWithCard(orderDto.Id, card);
+        Assert.True(timeoutResult.IsSuccess);
+        int paymentId = timeoutResult.Value.PaymentId;
+
+        // Act 1: оператор отклоняет зависший платёж
+        Result rejectResult = emulator.ManuallyResolvePayment(paymentId, markSuccess: false);
+        Assert.True(rejectResult.IsSuccess);
+
+        Result<PaymentStatus> statusAfterReject = paymentService.CheckPaymentStatus(paymentId);
+
+        // Assert 1
+        Assert.True(statusAfterReject.IsSuccess);
+        Assert.Equal(PaymentStatus.Failed, statusAfterReject.Value);
+
+        _dbContext.ChangeTracker.Clear();
+
+        Order orderAfterReject = _dbContext.Orders
+            .Include(o => o.Tickets)
+                .ThenInclude(t => t.FlightSeat)
+            .First(o => o.Id == orderDto.Id);
+
+        Assert.Equal(OrderStatus.Created, orderAfterReject.Status);
+        Assert.All(orderAfterReject.Tickets, t => Assert.Equal(SeatState.Held, t.FlightSeat!.State));
+
+        // Act 2: повторная оплата при исправном шлюзе
+        emulator.Mode = PaymentEmulatorMode.AlwaysSuccess;
+        Result<PaymentResultDto> retryResult = paymentService.PayWithCard(orderDto.Id, card);
+
+        // Assert 2
+        Assert.True(retryResult.IsSuccess);
+        Assert.Equal(PaymentStatus.Success, retryResult.Value.Status);
+
+        _dbContext.ChangeTracker.Clear();
+
+        Order paidOrder = _dbContext.Orders
+            .Include(o => o.Tickets)
+                .ThenInclude(t => t.FlightSeat)
+            .First(o => o.Id == orderDto.Id);
+
+        Assert.Equal(OrderStatus.Paid, paidOrder.Status);
+        Assert.All(paidOrder.Tickets, t => Assert.Equal(SeatState.Sold, t.FlightSeat!.State));
+    }
+
+    [Fact]
+    public void CheckPaymentStatus_WhenPaymentNotFound_ReturnsFailure()
+    {
+        // Arrange
+        (PaymentService paymentService, _, _, _, _) = CreateServices();
+        int nonExistentPaymentId = 999999;
+
+        // Act
+        Result<PaymentStatus> result = paymentService.CheckPaymentStatus(nonExistentPaymentId);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Contains("не найден", result.ErrorMessage);
+    }
 }

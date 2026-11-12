@@ -117,6 +117,12 @@ public class PaymentEmulator : IPaymentEmulator
                 $"Ручное подтверждение возможно только для платежей со статусом Indeterminate (текущий: {payment.Status}).");
         }
 
+        if (markSuccess && payment.Order is not null && payment.Order.Status != OrderStatus.Created)
+        {
+            return Result.Failure(
+                $"Невозможно подтвердить платёж: заказ {payment.Order.OrderNumber} уже находится в статусе {payment.Order.Status}.");
+        }
+
         using IDbContextTransaction transaction = _dbContext.Database.BeginTransaction();
 
         if (markSuccess)
