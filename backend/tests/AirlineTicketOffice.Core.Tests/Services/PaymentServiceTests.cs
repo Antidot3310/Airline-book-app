@@ -391,4 +391,173 @@ public class PaymentServiceTests : IDisposable
         Assert.Empty(emulator.GetIncomingRequestsLog());
         Assert.Empty(_dbContext.Payments);
     }
+
+    [Fact]
+    public void PayWithCash_WhenCashLessThanOrderTotal_ReturnsFailureMatchesTC14A()
+    {
+        // Arrange
+        (PaymentService paymentService, _, OrderTicketService orderService, _, _) =
+            CreateServices();
+        OrderDto orderDto = CreateSampleOrder(orderService, "4A");
+        decimal insufficientCash = orderDto.TotalAmount - 500m;
+
+        // Act
+        Result<PaymentResultDto> result = paymentService.PayWithCash(orderDto.Id, insufficientCash);
+
+        // Assert (TC-14А)
+        Assert.True(result.IsFailure);
+        Assert.Contains("Внесённая сумма меньше стоимости заказа", result.ErrorMessage);
+
+        _dbContext.ChangeTracker.Clear();
+
+        Order persistedOrder = _dbContext.Orders
+            .Include(o => o.Tickets)
+                .ThenInclude(t => t.FlightSeat)
+            .Include(o => o.Payments)
+            .First(o => o.Id == orderDto.Id);
+
+        Assert.Equal(OrderStatus.Created, persistedOrder.Status);
+        Assert.Empty(persistedOrder.Payments);
+        Assert.All(persistedOrder.Tickets, ticket =>
+        {
+            Assert.Equal(TicketStatus.Booked, ticket.Status);
+            Assert.Equal(SeatState.Held, ticket.FlightSeat!.State);
+        });
+    }
+
+    [Fact]
+    public void PayWithCash_WhenCashGreaterThanOrderTotal_SucceedsAndCalculatesChangeMatchesTC14B()
+    {
+        // Arrange
+        (PaymentService paymentService, _, OrderTicketService orderService, _, AuditLogService auditService) =
+            CreateServices();
+        OrderDto orderDto = CreateSampleOrder(orderService, "4A", "4C");
+        decimal cashReceived = orderDto.TotalAmount + 2000m;
+
+        // Act
+        Result<PaymentResultDto> result = paymentService.PayWithCash(orderDto.Id, cashReceived);
+
+        // Assert (TC-14Б)
+        Assert.True(result.IsSuccess);
+        PaymentResultDto paymentDto = result.Value;
+        Assert.Equal(orderDto.Id, paymentDto.OrderId);
+        Assert.Equal(orderDto.OrderNumber, paymentDto.OrderNumber);
+        Assert.Equal(orderDto.TotalAmount, paymentDto.Amount);
+        Assert.Equal(PaymentMethod.Cash, paymentDto.PaymentMethod);
+        Assert.Equal(PaymentStatus.Success, paymentDto.Status);
+        Assert.Null(paymentDto.ExternalTransactionId);
+        Assert.Equal(cashReceived, paymentDto.CashReceived);
+        Assert.Equal(2000.00m, paymentDto.ChangeAmount);
+        Assert.Contains("Оплата наличными принята", paymentDto.Message);
+
+        _dbContext.ChangeTracker.Clear();
+
+        Order persistedOrder = _dbContext.Orders
+            .Include(o => o.Tickets)
+                .ThenInclude(t => t.FlightSeat)
+            .Include(o => o.Payments)
+            .First(o => o.Id == orderDto.Id);
+
+        Assert.Equal(OrderStatus.Paid, persistedOrder.Status);
+        Assert.All(persistedOrder.Tickets, ticket =>
+        {
+            Assert.Equal(TicketStatus.Paid, ticket.Status);
+            Assert.NotNull(ticket.FlightSeat);
+            Assert.Equal(SeatState.Sold, ticket.FlightSeat.State);
+            Assert.Null(ticket.FlightSeat.HoldUntilTime);
+        });
+
+        Payment persistedPayment = Assert.Single(persistedOrder.Payments);
+        Assert.Equal(PaymentStatus.Success, persistedPayment.Status);
+        Assert.Equal(PaymentMethod.Cash, persistedPayment.PaymentMethod);
+        Assert.Null(persistedPayment.ExternalTransactionId);
+
+        IReadOnlyList<AuditLogDto> logs = auditService.GetLogs(null, null, null, "PaymentSuccess");
+        Assert.Single(logs);
+        Assert.Equal("Payment", logs[0].EntityName);
+        Assert.Equal(persistedPayment.Id, logs[0].EntityId);
+        Assert.Contains("наличными", logs[0].Description);
+    }
+
+    [Fact]
+    public void PayWithCash_WhenExactAmountProvided_SucceedsWithZeroChange()
+    {
+        // Arrange
+        (PaymentService paymentService, _, OrderTicketService orderService, _, _) =
+            CreateServices();
+        OrderDto orderDto = CreateSampleOrder(orderService, "4A");
+
+        // Act
+        Result<PaymentResultDto> result = paymentService.PayWithCash(orderDto.Id, orderDto.TotalAmount);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.Equal(PaymentMethod.Cash, result.Value.PaymentMethod);
+        Assert.Equal(PaymentStatus.Success, result.Value.Status);
+        Assert.Equal(orderDto.TotalAmount, result.Value.CashReceived);
+        Assert.Equal(0m, result.Value.ChangeAmount);
+
+        _dbContext.ChangeTracker.Clear();
+
+        Order persistedOrder = _dbContext.Orders.First(o => o.Id == orderDto.Id);
+        Assert.Equal(OrderStatus.Paid, persistedOrder.Status);
+    }
+
+    [Fact]
+    public void PayWithCash_WhenOrderHoldExpired_FailsAndExpiresOrder()
+    {
+        // Arrange
+        (PaymentService paymentService, _, OrderTicketService orderService, VirtualClockService clockService, _) =
+            CreateServices(isolateClockScheduler: true);
+        OrderDto orderDto = CreateSampleOrder(orderService, "4A", "4C");
+
+        clockService.AdvanceTime(TimeSpan.FromMinutes(16));
+
+        // Act
+        Result<PaymentResultDto> result = paymentService.PayWithCash(orderDto.Id, orderDto.TotalAmount);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Equal("Срок действия бронирования истёк.", result.ErrorMessage);
+
+        _dbContext.ChangeTracker.Clear();
+
+        Order persistedOrder = _dbContext.Orders
+            .Include(o => o.Tickets)
+                .ThenInclude(t => t.FlightSeat)
+            .Include(o => o.Payments)
+            .First(o => o.Id == orderDto.Id);
+
+        Assert.Equal(OrderStatus.Expired, persistedOrder.Status);
+        Assert.Empty(persistedOrder.Payments);
+        Assert.All(persistedOrder.Tickets, ticket =>
+        {
+            Assert.Equal(TicketStatus.Cancelled, ticket.Status);
+            Assert.NotNull(ticket.FlightSeat);
+            Assert.Equal(SeatState.Available, ticket.FlightSeat.State);
+            Assert.Null(ticket.FlightSeat.HoldUntilTime);
+        });
+    }
+
+    [Fact]
+    public void PayWithCash_WhenOrderAlreadyPaid_FailsForIdempotency()
+    {
+        // Arrange
+        (PaymentService paymentService, _, OrderTicketService orderService, _, _) =
+            CreateServices();
+        OrderDto orderDto = CreateSampleOrder(orderService, "4A");
+
+        Result<PaymentResultDto> firstResult = paymentService.PayWithCash(orderDto.Id, orderDto.TotalAmount);
+        Assert.True(firstResult.IsSuccess);
+
+        // Act
+        Result<PaymentResultDto> secondResult = paymentService.PayWithCash(orderDto.Id, orderDto.TotalAmount);
+
+        // Assert
+        Assert.True(secondResult.IsFailure);
+        Assert.Equal("Заказ уже оплачен.", secondResult.ErrorMessage);
+
+        int paymentsCount = _dbContext.Payments.Count(p => p.OrderId == orderDto.Id);
+        Assert.Equal(1, paymentsCount);
+    }
 }

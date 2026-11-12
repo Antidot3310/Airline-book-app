@@ -48,44 +48,13 @@ public class PaymentService : IPaymentService
             return Result<PaymentResultDto>.Failure("Указаны некорректные реквизиты банковской карты.");
         }
 
-        Order? order = _dbContext.Orders
-            .Include(o => o.Tickets)
-                .ThenInclude(t => t.FlightSeat)
-            .Include(o => o.Payments)
-            .FirstOrDefault(o => o.Id == orderId);
-
-        if (order is null)
+        Result<Order> orderValidation = LoadAndValidateOrderForPayment(orderId);
+        if (orderValidation.IsFailure)
         {
-            return Result<PaymentResultDto>.Failure($"Заказ с ID {orderId} не найден.");
+            return Result<PaymentResultDto>.Failure(orderValidation.ErrorMessage);
         }
 
-        if (order.Status == OrderStatus.Paid || order.Payments.Any(p => p.Status == PaymentStatus.Success))
-        {
-            return Result<PaymentResultDto>.Failure("Заказ уже оплачен.");
-        }
-
-        if (order.Payments.Any(p => p.Status == PaymentStatus.Indeterminate))
-        {
-            return Result<PaymentResultDto>.Failure(
-                "По заказу уже есть платёж в статусе ожидания подтверждения (Indeterminate). Проверьте его статус.");
-        }
-
-        if (order.Status == OrderStatus.Expired)
-        {
-            return Result<PaymentResultDto>.Failure("Срок действия бронирования истёк.");
-        }
-
-        if (order.Status != OrderStatus.Created)
-        {
-            return Result<PaymentResultDto>.Failure($"Оплата невозможна: заказ находится в статусе {order.Status}.");
-        }
-
-        DateTime currentVirtualTime = _clockService.CurrentVirtualTime;
-        if (order.HoldExpiresAt <= currentVirtualTime)
-        {
-            ExpireOrderOnPaymentAttempt(order);
-            return Result<PaymentResultDto>.Failure("Срок действия бронирования истёк.");
-        }
+        Order order = orderValidation.Value;
 
         EmulatorTransactionResult emulatorResult = _paymentEmulator.ProcessPayment(order.Id, order.TotalAmount, card);
         DateTime paymentTime = _clockService.CurrentVirtualTime;
@@ -154,13 +123,103 @@ public class PaymentService : IPaymentService
     /// <inheritdoc />
     public Result<PaymentResultDto> PayWithCash(int orderId, decimal cashReceived)
     {
-        return Result<PaymentResultDto>.Failure("Метод будет реализован в Инкременте 26.");
+        Result<Order> orderValidation = LoadAndValidateOrderForPayment(orderId);
+        if (orderValidation.IsFailure)
+        {
+            return Result<PaymentResultDto>.Failure(orderValidation.ErrorMessage);
+        }
+
+        Order order = orderValidation.Value;
+
+        if (cashReceived < order.TotalAmount)
+        {
+            return Result<PaymentResultDto>.Failure(
+                $"Внесённая сумма меньше стоимости заказа ({order.TotalAmount:N2} руб.).");
+        }
+
+        decimal changeAmount = Math.Round(cashReceived - order.TotalAmount, 2);
+
+        using IDbContextTransaction transaction = _dbContext.Database.BeginTransaction();
+
+        var payment = new Payment
+        {
+            OrderId = order.Id,
+            Amount = order.TotalAmount,
+            PaymentMethod = PaymentMethod.Cash,
+            Status = PaymentStatus.Success,
+            ExternalTransactionId = null,
+            CreatedAt = _clockService.CurrentVirtualTime
+        };
+
+        _dbContext.Payments.Add(payment);
+        MarkOrderPaid(order);
+        _dbContext.SaveChanges();
+
+        _auditLogService.Log(
+            "PaymentSuccess",
+            "Payment",
+            payment.Id,
+            $"Заказ {order.OrderNumber} оплачен наличными на сумму {order.TotalAmount:N2} руб. (внесено: {cashReceived:N2} руб., сдача: {changeAmount:N2} руб.).");
+
+        transaction.Commit();
+
+        return Result<PaymentResultDto>.Success(
+            MapToPaymentResultDto(
+                payment,
+                order,
+                $"Оплата наличными принята. Сдача: {changeAmount:N2} руб.",
+                cashReceived,
+                changeAmount));
     }
 
     /// <inheritdoc />
     public Result<PaymentStatus> CheckPaymentStatus(int paymentId)
     {
         return Result<PaymentStatus>.Failure("Метод будет реализован в Инкременте 27.");
+    }
+
+    private Result<Order> LoadAndValidateOrderForPayment(int orderId)
+    {
+        Order? order = _dbContext.Orders
+            .Include(o => o.Tickets)
+                .ThenInclude(t => t.FlightSeat)
+            .Include(o => o.Payments)
+            .FirstOrDefault(o => o.Id == orderId);
+
+        if (order is null)
+        {
+            return Result<Order>.Failure($"Заказ с ID {orderId} не найден.");
+        }
+
+        if (order.Status == OrderStatus.Paid || order.Payments.Any(p => p.Status == PaymentStatus.Success))
+        {
+            return Result<Order>.Failure("Заказ уже оплачен.");
+        }
+
+        if (order.Payments.Any(p => p.Status == PaymentStatus.Indeterminate))
+        {
+            return Result<Order>.Failure(
+                "По заказу уже есть платёж в статусе ожидания подтверждения (Indeterminate). Проверьте его статус.");
+        }
+
+        if (order.Status == OrderStatus.Expired)
+        {
+            return Result<Order>.Failure("Срок действия бронирования истёк.");
+        }
+
+        if (order.Status != OrderStatus.Created)
+        {
+            return Result<Order>.Failure($"Оплата невозможна: заказ находится в статусе {order.Status}.");
+        }
+
+        DateTime currentVirtualTime = _clockService.CurrentVirtualTime;
+        if (order.HoldExpiresAt <= currentVirtualTime)
+        {
+            ExpireOrderOnPaymentAttempt(order);
+            return Result<Order>.Failure("Срок действия бронирования истёк.");
+        }
+
+        return Result<Order>.Success(order);
     }
 
     private void ExpireOrderOnPaymentAttempt(Order order)
@@ -232,7 +291,12 @@ public class PaymentService : IPaymentService
         return normalizedNumber.Length >= 12 && normalizedNumber.All(char.IsDigit);
     }
 
-    private static PaymentResultDto MapToPaymentResultDto(Payment payment, Order order, string message)
+    private static PaymentResultDto MapToPaymentResultDto(
+        Payment payment,
+        Order order,
+        string message,
+        decimal? cashReceived = null,
+        decimal changeAmount = 0m)
     {
         return new PaymentResultDto
         {
@@ -240,8 +304,8 @@ public class PaymentService : IPaymentService
             OrderId = order.Id,
             OrderNumber = order.OrderNumber,
             Amount = payment.Amount,
-            CashReceived = null,
-            ChangeAmount = 0m,
+            CashReceived = cashReceived,
+            ChangeAmount = changeAmount,
             PaymentMethod = payment.PaymentMethod,
             Status = payment.Status,
             ExternalTransactionId = payment.ExternalTransactionId,
