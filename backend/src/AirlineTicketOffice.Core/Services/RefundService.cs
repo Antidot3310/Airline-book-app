@@ -215,6 +215,87 @@ public class RefundService : IRefundService
     /// <inheritdoc />
     public Result<MassRefundResultDto> ProcessFlightCancellationRefund(int flightId)
     {
-        return Result<MassRefundResultDto>.Failure("Метод будет реализован в Инкременте 30.");
+        Flight? flight = _dbContext.Flights
+            .Include(f => f.Seats)
+            .Include(f => f.Tickets)
+                .ThenInclude(t => t.Order)
+                    .ThenInclude(o => o!.Tickets)
+            .FirstOrDefault(f => f.Id == flightId);
+
+        if (flight == null)
+        {
+            return Result<MassRefundResultDto>.Failure($"Рейс с ID {flightId} не найден.");
+        }
+
+        if (flight.Status == FlightStatus.Departed)
+        {
+            return Result<MassRefundResultDto>.Failure("Невозможно оформить возврат в связи с отменой рейса: рейс уже вылетел.");
+        }
+
+        using IDbContextTransaction transaction = _dbContext.Database.BeginTransaction();
+
+        flight.Status = FlightStatus.Cancelled;
+
+        foreach (FlightSeat seat in flight.Seats)
+        {
+            seat.State = SeatState.Blocked;
+            seat.HoldUntilTime = null;
+        }
+
+        foreach (Ticket bookedTicket in flight.Tickets.Where(t => t.Status == TicketStatus.Booked))
+        {
+            bookedTicket.Status = TicketStatus.Cancelled;
+        }
+
+        List<Ticket> paidTickets = flight.Tickets.Where(t => t.Status == TicketStatus.Paid).ToList();
+
+        foreach (Ticket ticket in paidTickets)
+        {
+            ticket.Status = TicketStatus.Refunded;
+
+            Refund refund = new Refund
+            {
+                TicketId = ticket.Id,
+                RefundPercent = 100,
+                Amount = ticket.Price,
+                Reason = RefundReason.FlightCancelled,
+                CreatedAt = _clockService.CurrentVirtualTime
+            };
+            _dbContext.Refunds.Add(refund);
+        }
+
+        List<Order> affectedOrders = flight.Tickets
+            .Select(t => t.Order)
+            .Where(o => o is not null)
+            .Distinct()
+            .Cast<Order>()
+            .ToList();
+
+        foreach (Order order in affectedOrders)
+        {
+            bool allRefundedOrCancelled = order.Tickets.All(t => t.Status is TicketStatus.Refunded or TicketStatus.Cancelled);
+            order.Status = allRefundedOrCancelled ? OrderStatus.Refunded : OrderStatus.PartiallyRefunded;
+        }
+
+        _dbContext.SaveChanges();
+
+        _auditLogService.Log(
+            "MassRefund",
+            "Flight",
+            flight.Id,
+            $"Выполнен массовый возврат 100% при отмене рейса {flight.FlightNumber}. Возвращено билетов: {paidTickets.Count}, общая сумма: {paidTickets.Sum(t => t.Price):N2} руб. Все места заблокированы.");
+
+        transaction.Commit();
+
+        MassRefundResultDto resultDto = new MassRefundResultDto
+        {
+            FlightId = flight.Id,
+            FlightNumber = flight.FlightNumber,
+            RefundedTicketsCount = paidTickets.Count,
+            TotalRefundAmount = paidTickets.Sum(t => t.Price),
+            ProcessedAt = _clockService.CurrentVirtualTime
+        };
+
+        return Result<MassRefundResultDto>.Success(resultDto);
     }
 }

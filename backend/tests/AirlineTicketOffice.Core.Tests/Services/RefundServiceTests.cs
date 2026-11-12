@@ -452,4 +452,225 @@ public class RefundServiceTests : IDisposable
         Assert.Equal(2500.00m, result.Value.PenaltyAmount);
         Assert.Equal(OrderStatus.Refunded, result.Value.UpdatedOrderStatus);
     }
+
+    [Fact]
+    public void ProcessFlightCancellationRefund_WhenMultiplePaidTickets_Performs100PercentRefundBlocksSeatsMatchesTC08()
+    {
+        // Arrange
+        (RefundService service, _) = CreateServiceWithClock();
+        Airport origin = _dbContext.Airports.First();
+        Airport destination = _dbContext.Airports.Skip(1).First();
+        Aircraft aircraft = _dbContext.Aircrafts.First();
+
+        DateTime departureTime = new DateTime(2026, 11, 5, 14, 0, 0);
+        string suffix = Guid.NewGuid().ToString("N")[..6].ToUpperInvariant();
+
+        Flight flight = new Flight
+        {
+            FlightNumber = $"TC08-{suffix}",
+            OriginAirportId = origin.Id,
+            DestinationAirportId = destination.Id,
+            AircraftId = aircraft.Id,
+            DepartureTime = departureTime,
+            ArrivalTime = departureTime.AddHours(2),
+            Status = FlightStatus.Scheduled
+        };
+        _dbContext.Flights.Add(flight);
+        _dbContext.SaveChanges();
+
+        decimal ticketPrice = 4500.00m;
+        List<int> ticketIds = new List<int>();
+
+        for (int i = 0; i < 10; i++)
+        {
+            FlightSeat seat = new FlightSeat
+            {
+                FlightId = flight.Id,
+                SeatNumber = $"{i + 1}B",
+                SeatClass = SeatClass.Economy,
+                State = SeatState.Sold
+            };
+            _dbContext.FlightSeats.Add(seat);
+
+            Client client = new Client
+            {
+                FullName = $"Пассажир TC08 {i + 1}",
+                DocumentNumber = $"5500{suffix}{i}"
+            };
+            _dbContext.Clients.Add(client);
+            _dbContext.SaveChanges();
+
+            Order order = new Order
+            {
+                OrderNumber = $"ORD-TC08-{suffix}-{i + 1}",
+                Channel = OrderChannel.SelfService,
+                CreatedRole = UserRole.Passenger,
+                TotalAmount = ticketPrice,
+                Status = OrderStatus.Paid,
+                CreatedAt = new DateTime(2026, 11, 1, 8, 0, 0),
+                HoldExpiresAt = new DateTime(2026, 11, 1, 8, 15, 0)
+            };
+            _dbContext.Orders.Add(order);
+            _dbContext.SaveChanges();
+
+            Ticket ticket = new Ticket
+            {
+                TicketNumber = $"TKT-TC08-{suffix}-{i + 1}",
+                OrderId = order.Id,
+                ClientId = client.Id,
+                FlightId = flight.Id,
+                FlightSeatId = seat.Id,
+                Price = ticketPrice,
+                HasBaggage = false,
+                Status = TicketStatus.Paid
+            };
+            _dbContext.Tickets.Add(ticket);
+            _dbContext.SaveChanges();
+
+            ticketIds.Add(ticket.Id);
+        }
+
+        // Act
+        Result<MassRefundResultDto> result = service.ProcessFlightCancellationRefund(flight.Id);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.Equal(flight.Id, result.Value.FlightId);
+        Assert.Equal(flight.FlightNumber, result.Value.FlightNumber);
+        Assert.Equal(10, result.Value.RefundedTicketsCount);
+        Assert.Equal(10 * ticketPrice, result.Value.TotalRefundAmount);
+
+        Flight updatedFlight = _dbContext.Flights.AsNoTracking().First(f => f.Id == flight.Id);
+        Assert.Equal(FlightStatus.Cancelled, updatedFlight.Status);
+
+        List<Ticket> updatedTickets = _dbContext.Tickets.AsNoTracking().Where(t => ticketIds.Contains(t.Id)).ToList();
+        Assert.Equal(10, updatedTickets.Count);
+        Assert.All(updatedTickets, t => Assert.Equal(TicketStatus.Refunded, t.Status));
+
+        List<Refund> refunds = _dbContext.Refunds.AsNoTracking().Where(r => ticketIds.Contains(r.TicketId)).ToList();
+        Assert.Equal(10, refunds.Count);
+        Assert.All(refunds, r =>
+        {
+            Assert.Equal(100, r.RefundPercent);
+            Assert.Equal(ticketPrice, r.Amount);
+            Assert.Equal(RefundReason.FlightCancelled, r.Reason);
+        });
+
+        List<FlightSeat> seats = _dbContext.FlightSeats.AsNoTracking().Where(s => s.FlightId == flight.Id).ToList();
+        Assert.Equal(10, seats.Count);
+        Assert.All(seats, s =>
+        {
+            Assert.Equal(SeatState.Blocked, s.State);
+            Assert.Null(s.HoldUntilTime);
+        });
+
+        List<int> orderIds = updatedTickets.Select(t => t.OrderId).Distinct().ToList();
+        List<Order> orders = _dbContext.Orders.AsNoTracking().Where(o => orderIds.Contains(o.Id)).ToList();
+        Assert.Equal(10, orders.Count);
+        Assert.All(orders, o => Assert.Equal(OrderStatus.Refunded, o.Status));
+
+        bool auditExists = _dbContext.AuditLogs.AsNoTracking().Any(a => a.ActionType == "MassRefund" && a.EntityId == flight.Id);
+        Assert.True(auditExists);
+    }
+
+    [Fact]
+    public void ProcessFlightCancellationRefund_WhenFlightAlreadyDeparted_ReturnsFailure()
+    {
+        // Arrange
+        (RefundService service, _) = CreateServiceWithClock();
+        Airport origin = _dbContext.Airports.First();
+        Airport destination = _dbContext.Airports.Skip(1).First();
+        Aircraft aircraft = _dbContext.Aircrafts.First();
+
+        DateTime departureTime = new DateTime(2026, 11, 1, 10, 0, 0);
+        Flight flight = new Flight
+        {
+            FlightNumber = "DEP-999",
+            OriginAirportId = origin.Id,
+            DestinationAirportId = destination.Id,
+            AircraftId = aircraft.Id,
+            DepartureTime = departureTime,
+            ArrivalTime = departureTime.AddHours(2),
+            Status = FlightStatus.Departed
+        };
+        _dbContext.Flights.Add(flight);
+        _dbContext.SaveChanges();
+
+        // Act
+        Result<MassRefundResultDto> result = service.ProcessFlightCancellationRefund(flight.Id);
+
+        // Assert
+        Assert.True(result.IsFailure);
+        Assert.Contains("Невозможно оформить возврат в связи с отменой рейса: рейс уже вылетел", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void ProcessFlightCancellationRefund_WhenNoPaidTickets_BlocksSeatsAndReturnsZeroRefunded()
+    {
+        // Arrange
+        (RefundService service, _) = CreateServiceWithClock();
+        Airport origin = _dbContext.Airports.First();
+        Airport destination = _dbContext.Airports.Skip(1).First();
+        Aircraft aircraft = _dbContext.Aircrafts.First();
+
+        DateTime departureTime = new DateTime(2026, 11, 5, 10, 0, 0);
+        Flight flight = new Flight
+        {
+            FlightNumber = "EMPTY-100",
+            OriginAirportId = origin.Id,
+            DestinationAirportId = destination.Id,
+            AircraftId = aircraft.Id,
+            DepartureTime = departureTime,
+            ArrivalTime = departureTime.AddHours(2),
+            Status = FlightStatus.Scheduled
+        };
+        _dbContext.Flights.Add(flight);
+        _dbContext.SaveChanges();
+
+        FlightSeat seat1 = new FlightSeat
+        {
+            FlightId = flight.Id,
+            SeatNumber = "1A",
+            SeatClass = SeatClass.Economy,
+            State = SeatState.Available
+        };
+        FlightSeat seat2 = new FlightSeat
+        {
+            FlightId = flight.Id,
+            SeatNumber = "1B",
+            SeatClass = SeatClass.Economy,
+            State = SeatState.Available
+        };
+        _dbContext.FlightSeats.AddRange(seat1, seat2);
+        _dbContext.SaveChanges();
+
+        // Act
+        Result<MassRefundResultDto> result = service.ProcessFlightCancellationRefund(flight.Id);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value);
+        Assert.Equal(0, result.Value.RefundedTicketsCount);
+        Assert.Equal(0m, result.Value.TotalRefundAmount);
+
+        Flight updatedFlight = _dbContext.Flights.AsNoTracking().First(f => f.Id == flight.Id);
+        Assert.Equal(FlightStatus.Cancelled, updatedFlight.Status);
+
+        List<FlightSeat> updatedSeats = _dbContext.FlightSeats.AsNoTracking().Where(s => s.FlightId == flight.Id).ToList();
+        Assert.All(updatedSeats, s => Assert.Equal(SeatState.Blocked, s.State));
+    }
+
+    [Fact]
+    public void ProcessFlightCancellationRefund_WhenFlightNotFound_ReturnsFailure()
+    {
+        // Arrange
+        (RefundService service, _) = CreateServiceWithClock();
+
+        // Act
+        Result<MassRefundResultDto> result = service.ProcessFlightCancellationRefund(888888);
+
+        // Assert
+        Assert.True(result.IsFailure);
+    }
 }
