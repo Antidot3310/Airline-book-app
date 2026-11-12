@@ -8,6 +8,7 @@ using AirlineTicketOffice.Core.Data;
 using AirlineTicketOffice.Core.Data.Entities;
 using AirlineTicketOffice.Core.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace AirlineTicketOffice.Core.Services;
 
@@ -122,7 +123,93 @@ public class RefundService : IRefundService
     /// <inheritdoc />
     public Result<RefundResultDto> ProcessRefund(int ticketId)
     {
-        return Result<RefundResultDto>.Failure("Метод будет реализован в Инкременте 29.");
+        Result<RefundCalculationDto> calcResult = CalculateRefund(ticketId);
+        if (calcResult.IsFailure)
+        {
+            return Result<RefundResultDto>.Failure(calcResult.ErrorMessage);
+        }
+
+        RefundCalculationDto calc = calcResult.Value!;
+
+        Ticket? ticket = _dbContext.Tickets
+            .Include(t => t.Order)
+                .ThenInclude(o => o!.Tickets)
+            .Include(t => t.FlightSeat)
+            .Include(t => t.Flight)
+            .FirstOrDefault(t => t.Id == ticketId);
+
+        if (ticket == null)
+        {
+            return Result<RefundResultDto>.Failure($"Билет с ID {ticketId} не найден.");
+        }
+
+        if (ticket.Status != TicketStatus.Paid)
+        {
+            return Result<RefundResultDto>.Failure("Возврат возможен только для оплаченных билетов.");
+        }
+
+        if (ticket.Order == null || (ticket.Order.Status != OrderStatus.Paid && ticket.Order.Status != OrderStatus.PartiallyRefunded))
+        {
+            return Result<RefundResultDto>.Failure($"Возврат невозможен: заказ находится в статусе {ticket.Order?.Status}.");
+        }
+
+        using IDbContextTransaction transaction = _dbContext.Database.BeginTransaction();
+
+        Refund refund = new Refund
+        {
+            TicketId = ticket.Id,
+            RefundPercent = calc.RefundPercent,
+            Amount = calc.RefundAmount,
+            Reason = ticket.Flight!.Status == FlightStatus.Cancelled
+                ? RefundReason.FlightCancelled
+                : RefundReason.Voluntary,
+            CreatedAt = _clockService.CurrentVirtualTime
+        };
+        _dbContext.Refunds.Add(refund);
+
+        ticket.Status = TicketStatus.Refunded;
+
+        if (ticket.FlightSeat is not null)
+        {
+            ticket.FlightSeat.State = SeatState.Available;
+            ticket.FlightSeat.HoldUntilTime = null;
+        }
+
+        bool allRefunded = ticket.Order.Tickets.All(t => t.Status == TicketStatus.Refunded);
+        if (allRefunded)
+        {
+            ticket.Order.Status = OrderStatus.Refunded;
+        }
+        else
+        {
+            ticket.Order.Status = OrderStatus.PartiallyRefunded;
+        }
+
+        _dbContext.SaveChanges();
+
+        _auditLogService.Log(
+            "ProcessRefund",
+            "Ticket",
+            ticket.Id,
+            $"Оформлен возврат билета {ticket.TicketNumber} на сумму {refund.Amount:N2} руб. ({refund.RefundPercent}%). Место {ticket.FlightSeat?.SeatNumber} освобождено. Статус заказа {ticket.Order.OrderNumber}: {ticket.Order.Status}.");
+
+        transaction.Commit();
+
+        RefundResultDto resultDto = new RefundResultDto
+        {
+            RefundId = refund.Id,
+            TicketId = ticket.Id,
+            TicketNumber = ticket.TicketNumber,
+            OriginalPrice = ticket.Price,
+            RefundPercent = refund.RefundPercent,
+            RefundAmount = refund.Amount,
+            PenaltyAmount = calc.PenaltyAmount,
+            Reason = refund.Reason,
+            UpdatedOrderStatus = ticket.Order.Status,
+            ProcessedAt = refund.CreatedAt
+        };
+
+        return Result<RefundResultDto>.Success(resultDto);
     }
 
     /// <inheritdoc />
