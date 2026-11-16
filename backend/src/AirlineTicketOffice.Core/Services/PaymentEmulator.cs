@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using AirlineTicketOffice.Core.Contracts.Audit;
 using AirlineTicketOffice.Core.Contracts.Clock;
 using AirlineTicketOffice.Core.Contracts.Common;
@@ -7,6 +11,7 @@ using AirlineTicketOffice.Core.Data.Entities;
 using AirlineTicketOffice.Core.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AirlineTicketOffice.Core.Services;
 
@@ -17,15 +22,16 @@ namespace AirlineTicketOffice.Core.Services;
 /// </summary>
 public class PaymentEmulator : IPaymentEmulator
 {
-    private readonly AirlineDbContext _dbContext;
+    private readonly AirlineDbContext? _dbContext;
+    private readonly IAuditLogService? _auditLogService;
+    private readonly IServiceScopeFactory? _scopeFactory;
     private readonly IVirtualClockService _clockService;
-    private readonly IAuditLogService _auditLogService;
     private readonly List<EmulatorLogEntryDto> _requestLogs = [];
     private readonly object _lock = new();
     private int _logIdCounter = 0;
 
     /// <summary>
-    /// Инициализирует новый экземпляр класса <see cref="PaymentEmulator"/>.
+    /// Инициализирует новый экземпляр класса <see cref="PaymentEmulator"/> с прямым внедрением контекста БД.
     /// </summary>
     /// <param name="dbContext">Контекст базы данных системы.</param>
     /// <param name="clockService">Сервис виртуального времени системы.</param>
@@ -39,6 +45,21 @@ public class PaymentEmulator : IPaymentEmulator
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _clockService = clockService ?? throw new ArgumentNullException(nameof(clockService));
         _auditLogService = auditLogService ?? throw new ArgumentNullException(nameof(auditLogService));
+    }
+
+    /// <summary>
+    /// Инициализирует новый экземпляр класса <see cref="PaymentEmulator"/> в качестве Singleton через фабрику областей видимости.
+    /// </summary>
+    /// <param name="scopeFactory">Фабрика областей видимости DI.</param>
+    /// <param name="clockService">Сервис виртуального времени системы.</param>
+    /// <exception cref="ArgumentNullException">Выбрасывается, если одна из зависимостей равна null.</exception>
+    [ActivatorUtilitiesConstructor]
+    public PaymentEmulator(
+        IServiceScopeFactory scopeFactory,
+        IVirtualClockService clockService)
+    {
+        _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
+        _clockService = clockService ?? throw new ArgumentNullException(nameof(clockService));
     }
 
     /// <inheritdoc />
@@ -100,7 +121,29 @@ public class PaymentEmulator : IPaymentEmulator
     /// <inheritdoc />
     public Result ManuallyResolvePayment(int paymentId, bool markSuccess)
     {
-        Payment? payment = _dbContext.Payments
+        if (_dbContext != null && _auditLogService != null)
+        {
+            return ExecuteManualResolve(_dbContext, _auditLogService, paymentId, markSuccess);
+        }
+
+        if (_scopeFactory != null)
+        {
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            AirlineDbContext dbContext = scope.ServiceProvider.GetRequiredService<AirlineDbContext>();
+            IAuditLogService auditLogService = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
+            return ExecuteManualResolve(dbContext, auditLogService, paymentId, markSuccess);
+        }
+
+        throw new InvalidOperationException("Сервис эмулятора не сконфигурирован для доступа к базе данных.");
+    }
+
+    private static Result ExecuteManualResolve(
+        AirlineDbContext dbContext,
+        IAuditLogService auditLogService,
+        int paymentId,
+        bool markSuccess)
+    {
+        Payment? payment = dbContext.Payments
             .Include(p => p.Order)
                 .ThenInclude(o => o!.Tickets)
                     .ThenInclude(t => t.FlightSeat)
@@ -123,12 +166,12 @@ public class PaymentEmulator : IPaymentEmulator
                 $"Невозможно подтвердить платёж: заказ {payment.Order.OrderNumber} уже находится в статусе {payment.Order.Status}.");
         }
 
-        using IDbContextTransaction transaction = _dbContext.Database.BeginTransaction();
+        using IDbContextTransaction transaction = dbContext.Database.BeginTransaction();
 
         if (markSuccess)
         {
             ApplyManualSuccess(payment);
-            _auditLogService.Log(
+            auditLogService.Log(
                 "ManualPaymentResolve",
                 "Payment",
                 payment.Id,
@@ -137,14 +180,14 @@ public class PaymentEmulator : IPaymentEmulator
         else
         {
             payment.Status = PaymentStatus.Failed;
-            _auditLogService.Log(
+            auditLogService.Log(
                 "ManualPaymentResolve",
                 "Payment",
                 payment.Id,
                 $"Платёж {payment.Id} по заказу {payment.Order?.OrderNumber} отклонён оператором вручную.");
         }
 
-        _dbContext.SaveChanges();
+        dbContext.SaveChanges();
         transaction.Commit();
 
         return Result.Success();

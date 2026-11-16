@@ -2,6 +2,7 @@ using System;
 using AirlineTicketOffice.Core.Contracts.Audit;
 using AirlineTicketOffice.Core.Contracts.Session;
 using AirlineTicketOffice.Core.Domain.Enums;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AirlineTicketOffice.Core.Services;
 
@@ -11,18 +12,30 @@ namespace AirlineTicketOffice.Core.Services;
 /// </summary>
 public class SessionService : ISessionService
 {
-    private readonly IAuditLogService _auditLogService;
+    private readonly IAuditLogService? _auditLogService;
+    private readonly IServiceScopeFactory? _scopeFactory;
     private UserRole _currentRole = UserRole.Passenger;
     private bool _isSessionActive;
 
     /// <summary>
-    /// Инициализирует новый экземпляр сервиса <see cref="SessionService"/>.
+    /// Инициализирует новый экземпляр сервиса <see cref="SessionService"/> с прямым внедрением журнала аудита.
     /// </summary>
     /// <param name="auditLogService">Сервис журнала аудита операций.</param>
     /// <exception cref="ArgumentNullException">Выбрасывается, если <paramref name="auditLogService"/> равен null.</exception>
     public SessionService(IAuditLogService auditLogService)
     {
         _auditLogService = auditLogService ?? throw new ArgumentNullException(nameof(auditLogService));
+    }
+
+    /// <summary>
+    /// Инициализирует новый экземпляр сервиса <see cref="SessionService"/> в качестве Singleton через фабрику скоупов.
+    /// </summary>
+    /// <param name="scopeFactory">Фабрика областей видимости DI.</param>
+    /// <exception cref="ArgumentNullException">Выбрасывается, если <paramref name="scopeFactory"/> равен null.</exception>
+    [ActivatorUtilitiesConstructor]
+    public SessionService(IServiceScopeFactory scopeFactory)
+    {
+        _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
     }
 
     /// <inheritdoc />
@@ -36,7 +49,7 @@ public class SessionService : ISessionService
     {
         _currentRole = role;
         _isSessionActive = true;
-        _auditLogService.Log(role, "OpenSession", "Session", null, $"Открыт сеанс роли '{role}'");
+        Log(role, "OpenSession", "Session", null, $"Открыт сеанс роли '{role}'");
     }
 
     /// <inheritdoc />
@@ -44,10 +57,24 @@ public class SessionService : ISessionService
     {
         if (_isSessionActive)
         {
-            _auditLogService.Log(_currentRole, "CloseSession", "Session", null, $"Закрыт сеанс роли '{_currentRole}'");
+            Log(_currentRole, "CloseSession", "Session", null, $"Закрыт сеанс роли '{_currentRole}'");
         }
 
         _isSessionActive = false;
+    }
+
+    private void Log(UserRole role, string actionType, string entityName, int? entityId, string description)
+    {
+        if (_auditLogService != null)
+        {
+            _auditLogService.Log(role, actionType, entityName, entityId, description);
+        }
+        else if (_scopeFactory != null)
+        {
+            using IServiceScope scope = _scopeFactory.CreateScope();
+            IAuditLogService auditService = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
+            auditService.Log(role, actionType, entityName, entityId, description);
+        }
     }
 
     /// <inheritdoc />
