@@ -1,11 +1,14 @@
 using System;
+using System.Linq;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using AirlineTicketOffice.Core.Contracts.Booking;
 using AirlineTicketOffice.Core.Contracts.Clock;
 using AirlineTicketOffice.Core.Contracts.Clock.Events;
 using AirlineTicketOffice.Core.Contracts.Flights;
+using AirlineTicketOffice.Core.Contracts.Orders;
 using AirlineTicketOffice.Core.Contracts.Session;
 using AirlineTicketOffice.Core.Domain.Enums;
 using AirlineTicketOffice.Wpf.Services;
@@ -237,7 +240,50 @@ public partial class MainViewModel : ObservableObject, IDisposable
         var seatMapVm = _serviceProvider.GetRequiredService<SeatMapViewModel>();
         seatMapVm.Initialize(flight, passengersCount);
         seatMapVm.BackRequested += () => CurrentView = _flightSearchViewModel;
+        seatMapVm.SeatsHeld += (holdResult) => OnSeatsHeld(seatMapVm, holdResult);
         CurrentView = seatMapVm;
+    }
+
+    /// <summary>
+    /// Обработчик успешного удержания мест: переходит к вводу данных пассажиров W-05.
+    /// </summary>
+    private void OnSeatsHeld(SeatMapViewModel seatMapVm, HoldSeatsResultDto holdResult)
+    {
+        var passengerFormVm = _serviceProvider.GetRequiredService<PassengerFormViewModel>();
+        passengerFormVm.Initialize(
+            seatMapVm.FlightId,
+            seatMapVm.FlightNumber,
+            seatMapVm.RouteInfo,
+            seatMapVm.DepartureTimeText,
+            seatMapVm.SelectedSeats.ToList());
+
+        passengerFormVm.BackRequested += () => CurrentView = seatMapVm;
+        passengerFormVm.OrderCreated += OnOrderCreated;
+        CurrentView = passengerFormVm;
+    }
+
+    /// <summary>
+    /// Обработчик успешного создания заказа: переходит к экрану оплаты W-06.
+    /// </summary>
+    private void OnOrderCreated(OrderDto order)
+    {
+        var paymentVm = _serviceProvider.GetRequiredService<PaymentViewModel>();
+        paymentVm.Initialize(order);
+        paymentVm.NavigateToSearchRequested += NavigateToFlightSearch;
+        paymentVm.PrintDocumentsRequested += OnPrintDocumentsRequested;
+        CurrentView = paymentVm;
+    }
+
+    /// <summary>
+    /// Обработчик перехода к печати документов W-10.
+    /// </summary>
+    private void OnPrintDocumentsRequested(int orderId)
+    {
+        MessageBox.Show(
+            $"Окно предпросмотра и печати билетов W-10 (для заказа #{orderId}) будет подключено в Инкременте 37.",
+            "Печать документов W-10",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
     }
 
     /// <summary>

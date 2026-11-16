@@ -44,6 +44,12 @@
         <DataTemplate DataType="{x:Type vm:SeatMapViewModel}">
             <views:SeatMapView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:PassengerFormViewModel}">
+            <views:PassengerFormView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:PaymentViewModel}">
+            <views:PaymentView />
+        </DataTemplate>
 
         <!-- Базовый стиль TextBlock -->
         <Style TargetType="TextBlock">

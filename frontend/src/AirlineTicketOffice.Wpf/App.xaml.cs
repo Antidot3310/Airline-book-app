@@ -37,12 +37,16 @@ public partial class App : Application
         services.AddTransient<MainViewModel>();
         services.AddTransient<FlightSearchViewModel>();
         services.AddTransient<SeatMapViewModel>();
+        services.AddTransient<PassengerFormViewModel>();
+        services.AddTransient<PaymentViewModel>();
 
         // 4. Регистрация окон и представлений (Views)
         services.AddTransient<RoleSelectionWindow>();
         services.AddTransient<MainWindow>();
         services.AddTransient<FlightSearchView>();
         services.AddTransient<SeatMapView>();
+        services.AddTransient<PassengerFormView>();
+        services.AddTransient<PaymentView>();
 
         // Формирование провайдера сервисов
         Services = services.BuildServiceProvider();
