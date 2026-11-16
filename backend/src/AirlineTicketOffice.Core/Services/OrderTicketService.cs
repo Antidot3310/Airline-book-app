@@ -102,8 +102,13 @@ public class OrderTicketService : IOrderTicketService
 
         foreach (var seat in seats)
         {
+            bool isHeldByOtherOrder = seat.State == SeatState.Held &&
+                seat.HoldUntilTime.HasValue &&
+                seat.HoldUntilTime.Value > currentVirtualTime &&
+                _dbContext.Tickets.Any(t => t.FlightSeatId == seat.Id && t.Status == TicketStatus.Booked);
+
             bool isAvailable = seat.State == SeatState.Available ||
-                (seat.State == SeatState.Held && seat.HoldUntilTime.HasValue && seat.HoldUntilTime.Value <= currentVirtualTime);
+                (seat.State == SeatState.Held && (!isHeldByOtherOrder || (seat.HoldUntilTime.HasValue && seat.HoldUntilTime.Value <= currentVirtualTime)));
 
             if (!isAvailable)
             {
