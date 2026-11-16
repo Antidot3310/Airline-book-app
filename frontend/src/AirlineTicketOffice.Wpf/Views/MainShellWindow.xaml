@@ -1,0 +1,139 @@
+<Window x:Class="AirlineTicketOffice.Wpf.Views.MainShellWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:AirlineTicketOffice.Wpf.Models"
+        Title="{Binding WindowTitle}"
+        Width="1200"
+        Height="760"
+        MinWidth="960"
+        MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource AppBackgroundBrush}"
+        FontFamily="Segoe UI">
+
+    <Window.Resources>
+        <DataTemplate x:Key="SectionTemplate" DataType="{x:Type models:NavigationMenuItem}">
+            <Border Background="{StaticResource SurfaceBrush}"
+                    CornerRadius="10"
+                    Padding="40">
+                <StackPanel VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            MaxWidth="560">
+                    <TextBlock Text="{Binding Title}"
+                               FontSize="26"
+                               FontWeight="SemiBold"
+                               Foreground="#1F2933"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding Description}"
+                               FontSize="15"
+                               Foreground="{StaticResource MutedTextBrush}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               Margin="0,12,0,0" />
+                    <Border Background="#FFF8E1"
+                            CornerRadius="6"
+                            Padding="16,10"
+                            Margin="0,28,0,0">
+                        <TextBlock Text="Рабочая область раздела будет реализована в следующих инкрементах."
+                                   FontSize="13"
+                                   Foreground="#8D6E63"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center" />
+                    </Border>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Шапка главного окна -->
+        <Border Grid.Row="0"
+                Background="{StaticResource PrimaryDarkBrush}"
+                Padding="24,16">
+            <DockPanel>
+                <TextBlock Text="Авиакасса"
+                           DockPanel.Dock="Left"
+                           Foreground="White"
+                           FontSize="22"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+                <TextBlock Text="{Binding RoleDisplay, StringFormat='Роль: {0}'}"
+                           DockPanel.Dock="Right"
+                           Foreground="#E3F2FD"
+                           FontSize="14"
+                           VerticalAlignment="Center" />
+            </DockPanel>
+        </Border>
+
+        <!-- Рабочая область с динамическим меню -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="240" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource AppBorderBrush}"
+                    BorderThickness="0,0,1,0">
+                <DockPanel Margin="0,16,0,0">
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="Разделы"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource MutedTextBrush}"
+                               Margin="18,0,0,10" />
+                    <ListBox ItemsSource="{Binding MenuItems}"
+                             SelectedItem="{Binding SelectedMenuItem, Mode=TwoWay}"
+                             ItemContainerStyle="{StaticResource NavigationListItemStyle}"
+                             Background="Transparent"
+                             BorderThickness="0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:NavigationMenuItem}">
+                                <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <ContentControl Grid.Column="1"
+                            Content="{Binding SelectedMenuItem}"
+                            ContentTemplate="{StaticResource SectionTemplate}"
+                            Margin="32" />
+        </Grid>
+
+        <!-- Строка состояния: активная роль, виртуальное время и смена роли -->
+        <StatusBar Grid.Row="2"
+                   Height="40"
+                   Background="#ECEFF1"
+                   BorderBrush="{StaticResource AppBorderBrush}"
+                   BorderThickness="0,1,0,0">
+            <StatusBarItem DockPanel.Dock="Right">
+                <Button Content="Сменить роль"
+                        Command="{Binding ChangeRoleCommand}"
+                        Style="{StaticResource StatusBarButtonStyle}" />
+            </StatusBarItem>
+
+            <Separator DockPanel.Dock="Right" />
+
+            <StatusBarItem DockPanel.Dock="Right">
+                <TextBlock Text="{Binding VirtualTimeDisplay, StringFormat='Виртуальное время: {0}'}"
+                           Style="{StaticResource StatusBarTextStyle}" />
+            </StatusBarItem>
+
+            <Separator DockPanel.Dock="Right" />
+
+            <StatusBarItem>
+                <TextBlock Text="{Binding RoleDisplay, StringFormat='Роль: {0}'}"
+                           Style="{StaticResource StatusBarTextStyle}" />
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>
