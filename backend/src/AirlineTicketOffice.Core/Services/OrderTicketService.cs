@@ -161,9 +161,13 @@ public class OrderTicketService : IOrderTicketService
 
         var totalAmount = ticketData.Sum(td => td.Price);
 
+        OrderChannel orderChannel = request.BookingChannel.HasValue
+            ? (request.BookingChannel.Value == BookingChannel.Cashier ? OrderChannel.Cashier : OrderChannel.SelfService)
+            : (_sessionService.CurrentRole == UserRole.Cashier ? OrderChannel.Cashier : OrderChannel.SelfService);
+
         var order = new Order
         {
-            Channel = _sessionService.CurrentRole == UserRole.Cashier ? OrderChannel.Cashier : OrderChannel.SelfService,
+            Channel = orderChannel,
             CreatedRole = _sessionService.CurrentRole,
             TotalAmount = totalAmount,
             Status = OrderStatus.Created,

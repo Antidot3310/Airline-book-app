@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using AirlineTicketOffice.Core.Domain.Enums;
 
 namespace AirlineTicketOffice.Core.Contracts.Orders;
 
@@ -11,6 +12,16 @@ public class CreateOrderRequest
     /// Идентификатор рейса.
     /// </summary>
     public int FlightId { get; set; }
+
+    /// <summary>
+    /// Идентификатор клиента / плательщика заказа (опционально).
+    /// </summary>
+    public int? ClientId { get; set; }
+
+    /// <summary>
+    /// Канал оформления бронирования (опционально).
+    /// </summary>
+    public BookingChannel? BookingChannel { get; set; }
 
     /// <summary>
     /// Список пассажиров с закреплёнными посадочными местами и опциями багажа (от 1 до 5 человек).

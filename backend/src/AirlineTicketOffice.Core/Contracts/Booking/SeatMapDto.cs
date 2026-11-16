@@ -26,4 +26,14 @@ public class SeatMapDto
     /// Упорядоченный список всех кресел салона воздушного судна.
     /// </summary>
     public IReadOnlyList<SeatItemDto> Seats { get; set; } = [];
+
+    /// <summary>
+    /// Общее количество мест в салоне воздушного судна.
+    /// </summary>
+    public int TotalSeats => Seats.Count;
+
+    /// <summary>
+    /// Количество доступных для бронирования мест в салоне.
+    /// </summary>
+    public int AvailableSeats => System.Linq.Enumerable.Count(Seats, s => s.State == Domain.Enums.SeatState.Available);
 }

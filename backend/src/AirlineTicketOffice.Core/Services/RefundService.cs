@@ -248,6 +248,7 @@ public class RefundService : IRefundService
         }
 
         List<Ticket> paidTickets = flight.Tickets.Where(t => t.Status == TicketStatus.Paid).ToList();
+        List<RefundResultDto> refundDtos = [];
 
         foreach (Ticket ticket in paidTickets)
         {
@@ -262,6 +263,20 @@ public class RefundService : IRefundService
                 CreatedAt = _clockService.CurrentVirtualTime
             };
             _dbContext.Refunds.Add(refund);
+
+            refundDtos.Add(new RefundResultDto
+            {
+                RefundId = refund.Id,
+                TicketId = ticket.Id,
+                TicketNumber = ticket.TicketNumber,
+                OriginalPrice = ticket.Price,
+                RefundPercent = 100,
+                RefundAmount = ticket.Price,
+                PenaltyAmount = 0m,
+                Reason = RefundReason.FlightCancelled,
+                UpdatedOrderStatus = OrderStatus.Refunded,
+                ProcessedAt = _clockService.CurrentVirtualTime
+            });
         }
 
         List<Order> affectedOrders = flight.Tickets
@@ -293,6 +308,8 @@ public class RefundService : IRefundService
             FlightNumber = flight.FlightNumber,
             RefundedTicketsCount = paidTickets.Count,
             TotalRefundAmount = paidTickets.Sum(t => t.Price),
+            RefundPercent = 100,
+            Refunds = refundDtos,
             ProcessedAt = _clockService.CurrentVirtualTime
         };
 

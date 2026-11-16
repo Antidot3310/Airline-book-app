@@ -36,6 +36,20 @@ public class RefundStatisticsReportDto
     /// Детализированные строки статистики в разрезе причин возврата.
     /// </summary>
     public IReadOnlyList<RefundStatisticsItemDto> Items { get; set; } = [];
+
+    /// <summary>
+    /// Количество операций добровольного возврата билетов.
+    /// </summary>
+    public int VoluntaryRefundsCount => System.Linq.Enumerable.Sum(
+        System.Linq.Enumerable.Where(Items, i => i.Reason == Domain.Enums.RefundReason.Voluntary),
+        i => i.RefundsCount);
+
+    /// <summary>
+    /// Количество операций вынужденного возврата при отмене рейсов.
+    /// </summary>
+    public int FlightCancellationRefundsCount => System.Linq.Enumerable.Sum(
+        System.Linq.Enumerable.Where(Items, i => i.Reason == Domain.Enums.RefundReason.FlightCancelled),
+        i => i.RefundsCount);
 }
 
 /// <summary>

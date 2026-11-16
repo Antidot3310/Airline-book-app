@@ -15,3 +15,19 @@ public enum OrderChannel
     /// </summary>
     Cashier
 }
+
+/// <summary>
+/// Канал оформления бронирования и заказа на авиабилеты.
+/// </summary>
+public enum BookingChannel
+{
+    /// <summary>
+    /// Онлайн-самообслуживание.
+    /// </summary>
+    SelfService,
+
+    /// <summary>
+    /// Рабочее место кассира.
+    /// </summary>
+    Cashier
+}

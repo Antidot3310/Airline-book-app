@@ -1,5 +1,6 @@
 using System;
 using AirlineTicketOffice.Core.Contracts.Audit;
+using AirlineTicketOffice.Core.Contracts.Common;
 using AirlineTicketOffice.Core.Contracts.Session;
 using AirlineTicketOffice.Core.Domain.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,9 +48,17 @@ public class SessionService : ISessionService
     /// <inheritdoc />
     public void OpenSession(UserRole role)
     {
+        OpenSession(role, null, null);
+    }
+
+    /// <inheritdoc />
+    public Result OpenSession(UserRole role, string? userName, string? userEmail)
+    {
         _currentRole = role;
         _isSessionActive = true;
-        Log(role, "OpenSession", "Session", null, $"Открыт сеанс роли '{role}'");
+        string userDesc = !string.IsNullOrWhiteSpace(userName) ? $" пользователя '{userName}' ({userEmail ?? string.Empty})" : string.Empty;
+        Log(role, "OpenSession", "Session", null, $"Открыт сеанс роли '{role}'{userDesc}");
+        return Result.Success();
     }
 
     /// <inheritdoc />

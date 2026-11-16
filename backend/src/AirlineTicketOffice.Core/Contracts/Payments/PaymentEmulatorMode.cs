@@ -25,3 +25,29 @@ public enum PaymentEmulatorMode
     /// </summary>
     Random
 }
+
+/// <summary>
+/// Режим ответа эмулятора платёжного шлюза.
+/// </summary>
+public enum GatewayResponseMode
+{
+    /// <summary>
+    /// Успешное проведение платежа.
+    /// </summary>
+    AlwaysSuccess = PaymentEmulatorMode.AlwaysSuccess,
+
+    /// <summary>
+    /// Отказ банка-эмитента в проведении платежа.
+    /// </summary>
+    AlwaysFail = PaymentEmulatorMode.AlwaysReject,
+
+    /// <summary>
+    /// Таймаут обращения к платёжному шлюзу.
+    /// </summary>
+    Timeout = PaymentEmulatorMode.Timeout,
+
+    /// <summary>
+    /// Случайный исход.
+    /// </summary>
+    Random = PaymentEmulatorMode.Random
+}

@@ -11,6 +11,11 @@ public enum OrderStatus
     Created,
 
     /// <summary>
+    /// Забронирован (псевдоним для статуса Created при активном удержании мест).
+    /// </summary>
+    Booked = Created,
+
+    /// <summary>
     /// Оплачен покупателем.
     /// </summary>
     Paid,
