@@ -31,6 +31,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private FlightSearchViewModel? _flightSearchViewModel;
     private MyTicketsViewModel? _myTicketsViewModel;
     private CashierDeskViewModel? _cashierDeskViewModel;
+    private DirectoriesViewModel? _directoriesViewModel;
+    private FlightsAdminViewModel? _flightsAdminViewModel;
+    private TariffsAdminViewModel? _tariffsAdminViewModel;
 
     [ObservableProperty]
     private string _currentTimeDisplay = string.Empty;
@@ -359,14 +362,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void NavigateToDirectories()
     {
-        CurrentView = new PlaceholderViewModel
+        if (_directoriesViewModel == null)
         {
-            Title = "Справочники авиакомпании",
-            WindowCode = "W-11",
-            PlannedIncrement = "Инкремент 39",
-            Icon = "📚",
-            Description = "Управление справочниками аэропортов вылета/прилёта, моделями воздушных судов и реестром самолётов авиакомпании."
-        };
+            _directoriesViewModel = _serviceProvider.GetRequiredService<DirectoriesViewModel>();
+        }
+        else
+        {
+            _directoriesViewModel.RefreshData();
+        }
+
+        CurrentView = _directoriesViewModel;
     }
 
     /// <summary>
@@ -375,14 +380,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void NavigateToFlightsAdmin()
     {
-        CurrentView = new PlaceholderViewModel
+        if (_flightsAdminViewModel == null)
         {
-            Title = "Управление рейсами и расписанием",
-            WindowCode = "W-12",
-            PlannedIncrement = "Инкремент 39",
-            Icon = "🗓",
-            Description = "Создание новых регулярных рейсов, назначение бортов, отслеживание статусов вылета и отмена рейсов с автоматическим массовым возвратом 100%."
-        };
+            _flightsAdminViewModel = _serviceProvider.GetRequiredService<FlightsAdminViewModel>();
+        }
+        else
+        {
+            _flightsAdminViewModel.RefreshData();
+        }
+
+        CurrentView = _flightsAdminViewModel;
     }
 
     /// <summary>
@@ -391,14 +398,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void NavigateToTariffsAdmin()
     {
-        CurrentView = new PlaceholderViewModel
+        if (_tariffsAdminViewModel == null)
         {
-            Title = "Управление тарифами и сборами",
-            WindowCode = "W-13",
-            PlannedIncrement = "Инкремент 39",
-            Icon = "🏷",
-            Description = "Настройка базовых тарифов направлений, коэффициентов бизнес-класса, сборов за багаж и интерактивный калькулятор проверки цен."
-        };
+            _tariffsAdminViewModel = _serviceProvider.GetRequiredService<TariffsAdminViewModel>();
+        }
+        else
+        {
+            _tariffsAdminViewModel.RefreshData();
+        }
+
+        CurrentView = _tariffsAdminViewModel;
     }
 
     /// <summary>

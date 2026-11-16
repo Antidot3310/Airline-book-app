@@ -43,6 +43,9 @@ public partial class App : Application
         services.AddTransient<DocumentPreviewViewModel>();
         services.AddTransient<RefundTicketViewModel>();
         services.AddTransient<CashierDeskViewModel>();
+        services.AddTransient<DirectoriesViewModel>();
+        services.AddTransient<FlightsAdminViewModel>();
+        services.AddTransient<TariffsAdminViewModel>();
 
         // 4. Регистрация окон и представлений (Views)
         services.AddTransient<RoleSelectionWindow>();
@@ -55,6 +58,9 @@ public partial class App : Application
         services.AddTransient<DocumentPreviewWindow>();
         services.AddTransient<RefundTicketWindow>();
         services.AddTransient<CashierDeskView>();
+        services.AddTransient<DirectoriesView>();
+        services.AddTransient<FlightsAdminView>();
+        services.AddTransient<TariffsAdminView>();
 
         // Формирование провайдера сервисов
         Services = services.BuildServiceProvider();

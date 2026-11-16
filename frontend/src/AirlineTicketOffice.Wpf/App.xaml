@@ -56,6 +56,15 @@
         <DataTemplate DataType="{x:Type vm:CashierDeskViewModel}">
             <views:CashierDeskView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:DirectoriesViewModel}">
+            <views:DirectoriesView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:FlightsAdminViewModel}">
+            <views:FlightsAdminView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TariffsAdminViewModel}">
+            <views:TariffsAdminView />
+        </DataTemplate>
 
         <!-- Базовый стиль TextBlock -->
         <Style TargetType="TextBlock">

@@ -24,6 +24,12 @@ public interface IFlightService
     Result<FlightDetailsDto> GetFlightById(int flightId);
 
     /// <summary>
+    /// Возвращает перечень всех рейсов в расписании авиакомпании.
+    /// </summary>
+    /// <returns>Список всех рейсов с детальными сведениями.</returns>
+    IReadOnlyList<FlightDetailsDto> GetAllFlights();
+
+    /// <summary>
     /// Выполняет поиск доступных рейсов по маршруту, дате и количеству требуемых мест.
     /// </summary>
     /// <param name="originAirportId">Идентификатор аэропорта вылета.</param>
