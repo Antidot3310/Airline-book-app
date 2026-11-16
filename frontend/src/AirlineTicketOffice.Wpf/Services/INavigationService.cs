@@ -1,3 +1,5 @@
+using AirlineTicketOffice.Core.Contracts.Documents;
+
 namespace AirlineTicketOffice.Wpf.Services;
 
 /// <summary>
@@ -19,4 +21,10 @@ public interface INavigationService
     /// Открывает служебное окно эмулятора (W-16).
     /// </summary>
     void OpenEmulatorWindow();
+
+    /// <summary>
+    /// Открывает модальное окно предпросмотра и печати документов W-10.
+    /// </summary>
+    /// <param name="document">Сформированный печатный документ.</param>
+    void OpenDocumentPreview(PrintDocumentDto document);
 }

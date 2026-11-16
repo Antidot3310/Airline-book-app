@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
+using AirlineTicketOffice.Core.Contracts.Documents;
 using AirlineTicketOffice.Wpf.ViewModels;
 using AirlineTicketOffice.Wpf.Views;
 
@@ -63,5 +64,28 @@ public class NavigationService : INavigationService
             "Эмулятор W-16",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
+    }
+
+    /// <inheritdoc />
+    public void OpenDocumentPreview(PrintDocumentDto document)
+    {
+        if (document == null)
+        {
+            throw new ArgumentNullException(nameof(document));
+        }
+
+        var previewVm = _serviceProvider.GetRequiredService<DocumentPreviewViewModel>();
+        previewVm.Initialize(document);
+
+        var previewWindow = _serviceProvider.GetRequiredService<DocumentPreviewWindow>();
+        previewWindow.DataContext = previewVm;
+        previewVm.CloseRequested += () => previewWindow.Close();
+
+        if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
+        {
+            previewWindow.Owner = Application.Current.MainWindow;
+        }
+
+        previewWindow.ShowDialog();
     }
 }

@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using AirlineTicketOffice.Core.Contracts.Booking;
 using AirlineTicketOffice.Core.Contracts.Clock;
 using AirlineTicketOffice.Core.Contracts.Clock.Events;
+using AirlineTicketOffice.Core.Contracts.Documents;
 using AirlineTicketOffice.Core.Contracts.Flights;
 using AirlineTicketOffice.Core.Contracts.Orders;
 using AirlineTicketOffice.Core.Contracts.Session;
@@ -28,6 +29,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly IServiceProvider _serviceProvider;
 
     private FlightSearchViewModel? _flightSearchViewModel;
+    private MyTicketsViewModel? _myTicketsViewModel;
 
     [ObservableProperty]
     private string _currentTimeDisplay = string.Empty;
@@ -279,11 +281,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// </summary>
     private void OnPrintDocumentsRequested(int orderId)
     {
-        MessageBox.Show(
-            $"Окно предпросмотра и печати билетов W-10 (для заказа #{orderId}) будет подключено в Инкременте 37.",
-            "Печать документов W-10",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        var documentService = _serviceProvider.GetRequiredService<IDocumentService>();
+        try
+        {
+            PrintDocumentDto doc = documentService.GeneratePaymentReceiptForOrder(orderId);
+            _navigationService.OpenDocumentPreview(doc);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Не удалось сформировать чек оплаты: {ex.Message}", "Печать чека", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     /// <summary>
@@ -292,14 +299,31 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void NavigateToMyTickets()
     {
-        CurrentView = new PlaceholderViewModel
+        if (_myTicketsViewModel == null)
         {
-            Title = "Мои билеты и бронирования",
-            WindowCode = "W-07",
-            PlannedIncrement = "Инкремент 37",
-            Icon = "🎫",
-            Description = "Просмотр оформленных билетов и активных броней текущего сеанса, повторная печать маршрутной квитанции (W-10) и инициация возврата билета."
-        };
+            _myTicketsViewModel = _serviceProvider.GetRequiredService<MyTicketsViewModel>();
+            _myTicketsViewModel.OrderPayRequested += OnOrderCreated;
+            _myTicketsViewModel.NavigateToSearchRequested += NavigateToFlightSearch;
+            _myTicketsViewModel.RefundRequested += OnRefundRequested;
+        }
+        else
+        {
+            _myTicketsViewModel.LoadSessionTickets();
+        }
+
+        CurrentView = _myTicketsViewModel;
+    }
+
+    /// <summary>
+    /// Обработчик запроса возврата билета: переход к окну W-09.
+    /// </summary>
+    private void OnRefundRequested(TicketItemViewModel ticket)
+    {
+        MessageBox.Show(
+            $"Раздел «Возврат билета» W-09 (для билета {ticket.TicketNumber}) будет подключен в Инкременте 38.",
+            "Возврат билета W-09",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
     }
 
     /// <summary>
@@ -424,6 +448,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (_flightSearchViewModel != null)
         {
             _flightSearchViewModel.FlightSelected -= OnFlightSelected;
+        }
+
+        if (_myTicketsViewModel != null)
+        {
+            _myTicketsViewModel.OrderPayRequested -= OnOrderCreated;
+            _myTicketsViewModel.NavigateToSearchRequested -= NavigateToFlightSearch;
+            _myTicketsViewModel.RefundRequested -= OnRefundRequested;
         }
 
         GC.SuppressFinalize(this);

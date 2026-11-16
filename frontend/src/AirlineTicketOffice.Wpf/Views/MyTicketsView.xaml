@@ -1,0 +1,546 @@
+<UserControl x:Class="AirlineTicketOffice.Wpf.Views.MyTicketsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:AirlineTicketOffice.Wpf.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:MyTicketsViewModel}">
+
+    <UserControl.Resources>
+        <!-- Стили вкладок-фильтров -->
+        <Style x:Key="TabItemButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="tabBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Стиль для вкладки «Все» -->
+        <Style x:Key="TabAllStyle" TargetType="Button" BasedOn="{StaticResource TabItemButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsTabAll}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                    <Setter Property="Foreground" Value="White" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Стиль для вкладки «Предстоящие» -->
+        <Style x:Key="TabUpcomingStyle" TargetType="Button" BasedOn="{StaticResource TabItemButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsTabUpcoming}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                    <Setter Property="Foreground" Value="White" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Стиль для вкладки «Прошедшие» -->
+        <Style x:Key="TabPastStyle" TargetType="Button" BasedOn="{StaticResource TabItemButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsTabPast}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                    <Setter Property="Foreground" Value="White" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Стиль для вкладки «Неоплаченные брони» -->
+        <Style x:Key="TabBookedStyle" TargetType="Button" BasedOn="{StaticResource TabItemButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsTabBooked}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+                    <Setter Property="Foreground" Value="White" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Стиль для вкладки «Возвращённые» -->
+        <Style x:Key="TabRefundedStyle" TargetType="Button" BasedOn="{StaticResource TabItemButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsTabRefunded}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource PrimaryDarkBrush}" />
+                    <Setter Property="Foreground" Value="White" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- 1. Панель поиска по паспорту и заголовка -->
+            <RowDefinition Height="Auto" />
+            <!-- 2. Панель вкладок-фильтров -->
+            <RowDefinition Height="Auto" />
+            <!-- 3. Сообщения о статусе / ошибках -->
+            <RowDefinition Height="Auto" />
+            <!-- 4. Список билетов / заглушка пустого списка -->
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 1. Карточка поиска билетов -->
+        <Border Grid.Row="0"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource SurfaceBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="24"
+                Margin="0,0,0,16">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Заголовок раздела -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                    <TextBlock Text="🎫  " FontSize="20" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="Мои билеты и бронирования (W-07)"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource PrimaryDarkBrush}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Поле ввода паспорта и кнопки действий -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Серия и номер паспорта пассажира"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,0,0,6" />
+                        <TextBox Text="{Binding DocumentNumberFilter, UpdateSourceTrigger=PropertyChanged}"
+                                 Height="38"
+                                 Padding="10,8"
+                                 FontSize="14" />
+                    </StackPanel>
+
+                    <!-- Кнопка поиска -->
+                    <Button Grid.Column="2"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Command="{Binding SearchTicketsCommand}"
+                            Height="38"
+                            Padding="20,0"
+                            VerticalAlignment="Bottom">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🔍  " />
+                            <TextBlock Text="Найти билеты" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Кнопка обновления билетов сеанса -->
+                    <Button Grid.Column="4"
+                            Style="{StaticResource OutlineButtonStyle}"
+                            Command="{Binding LoadSessionTicketsCommand}"
+                            Height="38"
+                            Padding="16,0"
+                            VerticalAlignment="Bottom">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🔄  " />
+                            <TextBlock Text="Билеты сеанса" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- 2. Вкладки-фильтры -->
+        <Border Grid.Row="1"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource SurfaceBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="4"
+                HorizontalAlignment="Left"
+                Margin="0,0,0,16">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Все билеты"
+                        Style="{StaticResource TabAllStyle}"
+                        Command="{Binding SelectTabCommand}"
+                        CommandParameter="0"
+                        Margin="0,0,4,0" />
+                <Button Content="Предстоящие"
+                        Style="{StaticResource TabUpcomingStyle}"
+                        Command="{Binding SelectTabCommand}"
+                        CommandParameter="1"
+                        Margin="0,0,4,0" />
+                <Button Content="Прошедшие"
+                        Style="{StaticResource TabPastStyle}"
+                        Command="{Binding SelectTabCommand}"
+                        CommandParameter="2"
+                        Margin="0,0,4,0" />
+                <Button Content="Неоплаченные брони"
+                        Style="{StaticResource TabBookedStyle}"
+                        Command="{Binding SelectTabCommand}"
+                        CommandParameter="3"
+                        Margin="0,0,4,0" />
+                <Button Content="Возвращённые"
+                        Style="{StaticResource TabRefundedStyle}"
+                        Command="{Binding SelectTabCommand}"
+                        CommandParameter="4" />
+            </StackPanel>
+        </Border>
+
+        <!-- 3. Сообщения о статусе / уведомления -->
+        <Border Grid.Row="2"
+                Background="{StaticResource PrimaryLightBrush}"
+                BorderBrush="{StaticResource PrimaryBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16,12"
+                Margin="0,0,0,16">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding StatusMessage, Converter={x:Null}}" Value="False">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="ℹ️  " FontSize="16" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding StatusMessage}"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource PrimaryDarkBrush}"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap" />
+            </Grid>
+        </Border>
+
+        <!-- 4. Список билетов / Пустое состояние -->
+        <Grid Grid.Row="3">
+            <!-- Пустое состояние, когда билетов нет -->
+            <Border Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource SurfaceBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="40">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasTickets}" Value="False">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Text="🎫" FontSize="56" HorizontalAlignment="Center" Margin="0,0,0,16" />
+                    <TextBlock Text="Билеты не найдены"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource PrimaryDarkBrush}"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8" />
+                    <TextBlock Text="По указанным критериям билеты или активные бронирования не найдены.&#x0a;Вы можете перейти в поиск рейсов и приобрести авиабилет прямо сейчас."
+                               FontSize="14"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,24" />
+                    <Button Style="{StaticResource PrimaryButtonStyle}"
+                            Command="{Binding NavigateToSearchCommand}"
+                            Padding="24,12"
+                            HorizontalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="✈  " />
+                            <TextBlock Text="Перейти к поиску рейсов (W-03)" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- Список найденных билетов -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ScrollViewer.Style>
+                    <Style TargetType="ScrollViewer">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasTickets}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ScrollViewer.Style>
+
+                <ItemsControl ItemsSource="{Binding FilteredTickets}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:TicketItemViewModel}">
+                            <Border Background="{StaticResource SurfaceBrush}"
+                                    BorderBrush="{StaticResource SurfaceBorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="20"
+                                    Margin="0,0,0,16">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <!-- Верхняя строка: Маршрут, Рейс, Статус, Цена -->
+                                        <RowDefinition Height="Auto" />
+                                        <!-- Разделитель -->
+                                        <RowDefinition Height="Auto" />
+                                        <!-- Детали: время, пассажир, место, багаж, номера -->
+                                        <RowDefinition Height="Auto" />
+                                        <!-- Разделитель -->
+                                        <RowDefinition Height="Auto" />
+                                        <!-- Кнопки действий: Просмотр билета, Чек, Оплата брони, Возврат -->
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Строка 1: Маршрут, Рейс, Статус, Цена -->
+                                    <Grid Grid.Row="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <!-- Маршрут -->
+                                            <TextBlock Text="{Binding RouteText}"
+                                                       FontSize="18"
+                                                       FontWeight="Bold"
+                                                       Foreground="{StaticResource PrimaryDarkBrush}"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,12,0" />
+
+                                            <!-- Номер рейса -->
+                                            <Border Background="{StaticResource PrimaryLightBrush}"
+                                                    CornerRadius="6"
+                                                    Padding="8,4"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0,0,12,0">
+                                                <TextBlock Text="{Binding FlightNumber}"
+                                                           FontWeight="Bold"
+                                                           FontSize="12"
+                                                           Foreground="{StaticResource PrimaryDarkBrush}" />
+                                            </Border>
+
+                                            <!-- Место и класс -->
+                                            <Border Background="#ECEFF1"
+                                                    CornerRadius="6"
+                                                    Padding="8,4"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0,0,12,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="💺 Место " FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                                                    <TextBlock Text="{Binding SeatNumber}" FontWeight="Bold" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}" />
+                                                    <TextBlock Text=" (" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                                                    <TextBlock Text="{Binding SeatClassText}" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PrimaryBrush}" />
+                                                    <TextBlock Text=")" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <!-- Бейдж статуса -->
+                                            <Border Background="{Binding StatusBadgeColor}"
+                                                    CornerRadius="6"
+                                                    Padding="12,5"
+                                                    VerticalAlignment="Center"
+                                                    Margin="0,0,16,0">
+                                                <TextBlock Text="{Binding StatusText}"
+                                                           FontWeight="Bold"
+                                                           FontSize="12"
+                                                           Foreground="White" />
+                                            </Border>
+
+                                            <!-- Стоимость билета -->
+                                            <TextBlock Text="{Binding Price, StringFormat='{}{0:N0} ₽'}"
+                                                       FontSize="20"
+                                                       FontWeight="Bold"
+                                                       Foreground="{StaticResource PrimaryDarkBrush}"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Разделитель -->
+                                    <Border Grid.Row="1"
+                                            Height="1"
+                                            Background="{StaticResource SurfaceBorderBrush}"
+                                            Margin="0,14,0,14" />
+
+                                    <!-- Строка 2: Детализированная информация -->
+                                    <Grid Grid.Row="2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1.2*" />
+                                            <ColumnDefinition Width="1.5*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="1.5*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Дата и время вылета -->
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Дата и время вылета"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       Margin="0,0,0,4" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="📅  " FontSize="13" />
+                                                <TextBlock Text="{Binding DepartureTimeText}"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="13"
+                                                           Foreground="{StaticResource TextPrimaryBrush}" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Пассажир -->
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Пассажир и документ"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       Margin="0,0,0,4" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="👤  " FontSize="13" />
+                                                <TextBlock Text="{Binding PassengerName}"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="13"
+                                                           Foreground="{StaticResource TextPrimaryBrush}" />
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding PassengerDocument, StringFormat='Паспорт: {0}'}"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       Margin="20,2,0,0" />
+                                        </StackPanel>
+
+                                        <!-- Багаж -->
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Багажное место"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       Margin="0,0,0,4" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="🧳  " FontSize="13" />
+                                                <TextBlock Text="{Binding HasBaggageText}"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="13"
+                                                           Foreground="{StaticResource TextPrimaryBrush}" />
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Номера билета и заказа -->
+                                        <StackPanel Grid.Column="3">
+                                            <TextBlock Text="Идентификаторы"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       Margin="0,0,0,4" />
+                                            <TextBlock Text="{Binding TicketNumber, StringFormat='Билет: {0}'}"
+                                                       FontWeight="SemiBold"
+                                                       FontSize="12"
+                                                       Foreground="{StaticResource PrimaryDarkBrush}" />
+                                            <TextBlock Text="{Binding OrderNumber, StringFormat='Заказ: {0}'}"
+                                                       FontSize="11"
+                                                       Foreground="{StaticResource TextSecondaryBrush}" />
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- Разделитель перед кнопками -->
+                                    <Border Grid.Row="3"
+                                            Height="1"
+                                            Background="{StaticResource SurfaceBorderBrush}"
+                                            Margin="0,14,0,14" />
+
+                                    <!-- Строка 3: Панель кнопок действий -->
+                                    <Grid Grid.Row="4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Левые кнопки: Просмотр билета и чека -->
+                                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <!-- Кнопка «Маршрутная квитанция» (W-10) -->
+                                            <Button Style="{StaticResource OutlineButtonStyle}"
+                                                    Command="{Binding DataContext.ViewTicketDocumentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Padding="14,8"
+                                                    Margin="0,0,10,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="📄  " />
+                                                    <TextBlock Text="Маршрутная квитанция (W-10)" />
+                                                </StackPanel>
+                                            </Button>
+
+                                            <!-- Кнопка «Кассовый чек» (W-10) -->
+                                            <Button Style="{StaticResource OutlineButtonStyle}"
+                                                    Command="{Binding DataContext.ViewReceiptCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Padding="14,8"
+                                                    Margin="0,0,10,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="🧾  " />
+                                                    <TextBlock Text="Чек оплаты (W-10)" />
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+
+                                        <!-- Правые кнопки: Оплата брони и возврат -->
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <!-- Кнопка «Оплатить бронь» (W-06) -->
+                                            <Button Style="{StaticResource AccentButtonStyle}"
+                                                    Command="{Binding DataContext.PayBookingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Visibility="{Binding CanBePaid, Converter={StaticResource BoolToVisConverter}}"
+                                                    Padding="16,8"
+                                                    Margin="0,0,10,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="💳  " />
+                                                    <TextBlock Text="Оплатить бронь (W-06)" />
+                                                </StackPanel>
+                                            </Button>
+
+                                            <!-- Кнопка «Оформить возврат» (W-09) -->
+                                            <Button Style="{StaticResource OutlineButtonStyle}"
+                                                    Command="{Binding DataContext.RefundTicketCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Visibility="{Binding CanBeRefunded, Converter={StaticResource BoolToVisConverter}}"
+                                                    Padding="14,8">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="↩  " />
+                                                    <TextBlock Text="Оформить возврат" />
+                                                </StackPanel>
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</UserControl>

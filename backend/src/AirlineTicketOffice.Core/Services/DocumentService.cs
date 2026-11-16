@@ -210,6 +210,28 @@ public class DocumentService : IDocumentService
         };
     }
 
+    /// <inheritdoc />
+    public PrintDocumentDto GeneratePaymentReceiptForOrder(int orderId)
+    {
+        Payment? payment = _dbContext.Payments
+            .AsNoTracking()
+            .Include(p => p.Order)
+            .OrderByDescending(p => p.CreatedAt)
+            .FirstOrDefault(p => p.OrderId == orderId && p.Status == PaymentStatus.Success)
+            ?? _dbContext.Payments
+                .AsNoTracking()
+                .Include(p => p.Order)
+                .OrderByDescending(p => p.CreatedAt)
+                .FirstOrDefault(p => p.OrderId == orderId);
+
+        if (payment == null)
+        {
+            throw new KeyNotFoundException($"Платёж для заказа с ID {orderId} не найден.");
+        }
+
+        return GeneratePaymentReceipt(payment.Id);
+    }
+
     /// <summary>
     /// Формирует квитанцию о возврате авиабилета.
     /// </summary>
