@@ -319,6 +319,8 @@ public partial class MyTicketsViewModel : ObservableObject
             return;
         }
 
+        _navigationService.OpenRefundDialog(ticket.Id);
+        LoadSessionTickets();
         RefundRequested?.Invoke(ticket);
     }
 

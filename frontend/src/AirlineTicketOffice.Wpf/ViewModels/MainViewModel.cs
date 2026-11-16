@@ -30,6 +30,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private FlightSearchViewModel? _flightSearchViewModel;
     private MyTicketsViewModel? _myTicketsViewModel;
+    private CashierDeskViewModel? _cashierDeskViewModel;
 
     [ObservableProperty]
     private string _currentTimeDisplay = string.Empty;
@@ -315,15 +316,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Обработчик запроса возврата билета: переход к окну W-09.
+    /// Обработчик запроса возврата билета: окно W-09 открывается сервисом навигации.
     /// </summary>
     private void OnRefundRequested(TicketItemViewModel ticket)
     {
-        MessageBox.Show(
-            $"Раздел «Возврат билета» W-09 (для билета {ticket.TicketNumber}) будет подключен в Инкременте 38.",
-            "Возврат билета W-09",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        // Окно возврата открывается модально через NavigationService
+        _cashierDeskViewModel?.RefreshShiftSummary();
     }
 
     /// <summary>
@@ -332,30 +330,27 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void NavigateToCashierDesk()
     {
-        CurrentView = new PlaceholderViewModel
+        if (_cashierDeskViewModel == null)
         {
-            Title = "Рабочее место кассира",
-            WindowCode = "W-08",
-            PlannedIncrement = "Инкремент 38",
-            Icon = "💳",
-            Description = "Быстрое оформление продаж в кассе, поиск клиентов по ФИО/паспорту, приём наличных и банковских карт со сдачей, а также финансовые итоги смены."
-        };
+            _cashierDeskViewModel = _serviceProvider.GetRequiredService<CashierDeskViewModel>();
+            _cashierDeskViewModel.NewSaleRequested += (client) => NavigateToFlightSearch();
+        }
+        else
+        {
+            _cashierDeskViewModel.RefreshShiftSummary();
+        }
+
+        CurrentView = _cashierDeskViewModel;
     }
 
     /// <summary>
     /// Переход к разделу «Возврат билета» (W-09).
+    /// Открывает рабочее место кассира с фокусом на блоке возврата.
     /// </summary>
     [RelayCommand]
     public void NavigateToRefunds()
     {
-        CurrentView = new PlaceholderViewModel
-        {
-            Title = "Оформление возврата билета",
-            WindowCode = "W-09",
-            PlannedIncrement = "Инкремент 38",
-            Icon = "↩",
-            Description = "Поиск билета по номеру, расчёт штрафной шкалы добровольного возврата (90% / 50%) и печать чека возврата денежных средств."
-        };
+        NavigateToCashierDesk();
     }
 
     /// <summary>
@@ -455,6 +450,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
             _myTicketsViewModel.OrderPayRequested -= OnOrderCreated;
             _myTicketsViewModel.NavigateToSearchRequested -= NavigateToFlightSearch;
             _myTicketsViewModel.RefundRequested -= OnRefundRequested;
+        }
+
+        if (_cashierDeskViewModel != null)
+        {
+            _cashierDeskViewModel.Dispose();
         }
 
         GC.SuppressFinalize(this);

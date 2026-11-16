@@ -27,4 +27,10 @@ public interface INavigationService
     /// </summary>
     /// <param name="document">Сформированный печатный документ.</param>
     void OpenDocumentPreview(PrintDocumentDto document);
+
+    /// <summary>
+    /// Открывает модальное окно оформления возврата билета W-09.
+    /// </summary>
+    /// <param name="ticketId">Идентификатор возвращаемого билета.</param>
+    void OpenRefundDialog(int ticketId);
 }

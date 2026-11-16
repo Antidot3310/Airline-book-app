@@ -53,6 +53,9 @@
         <DataTemplate DataType="{x:Type vm:MyTicketsViewModel}">
             <views:MyTicketsView />
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CashierDeskViewModel}">
+            <views:CashierDeskView />
+        </DataTemplate>
 
         <!-- Базовый стиль TextBlock -->
         <Style TargetType="TextBlock">

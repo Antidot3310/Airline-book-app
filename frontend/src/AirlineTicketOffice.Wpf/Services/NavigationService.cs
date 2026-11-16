@@ -88,4 +88,22 @@ public class NavigationService : INavigationService
 
         previewWindow.ShowDialog();
     }
+
+    /// <inheritdoc />
+    public void OpenRefundDialog(int ticketId)
+    {
+        var refundVm = _serviceProvider.GetRequiredService<RefundTicketViewModel>();
+        refundVm.Initialize(ticketId);
+
+        var refundWindow = _serviceProvider.GetRequiredService<RefundTicketWindow>();
+        refundWindow.DataContext = refundVm;
+        refundVm.CloseRequested += () => refundWindow.Close();
+
+        if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
+        {
+            refundWindow.Owner = Application.Current.MainWindow;
+        }
+
+        refundWindow.ShowDialog();
+    }
 }
