@@ -1,0 +1,524 @@
+<UserControl x:Class="AirlineTicketOffice.Wpf.Views.CashierDeskView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:AirlineTicketOffice.Wpf.ViewModels"
+             xmlns:clients="clr-namespace:AirlineTicketOffice.Core.Contracts.Clients;assembly=AirlineTicketOffice.Core"
+             xmlns:orders="clr-namespace:AirlineTicketOffice.Core.Contracts.Orders;assembly=AirlineTicketOffice.Core"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:CashierDeskViewModel}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- 1. Строка уведомлений о статусе -->
+            <RowDefinition Height="Auto" />
+            <!-- 2. Основная рабочая область (3 колонки) -->
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 1. Баннер уведомлений о статусе / ошибках -->
+        <Border Grid.Row="0"
+                Background="{StaticResource PrimaryLightBrush}"
+                BorderBrush="{StaticResource PrimaryBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16,10"
+                Margin="0,0,0,14">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding StatusMessage}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="ℹ️  " FontSize="16" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding StatusMessage}"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource PrimaryDarkBrush}"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap" />
+            </Grid>
+        </Border>
+
+        <!-- 2. Трёхколоночная рабочая область -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <!-- Левая колонка: Клиенты и пассажиры (350 px) -->
+                <ColumnDefinition Width="350" />
+                <ColumnDefinition Width="16" />
+                <!-- Центральная колонка: Продажи и быстрый возврат (*) -->
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="16" />
+                <!-- Правая колонка: Итоги смены кассира (300 px) -->
+                <ColumnDefinition Width="300" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ЛЕВАЯ КОЛОНКА: Пассажиры и клиенты -->
+            <Border Grid.Column="0"
+                    Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource SurfaceBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <!-- Заголовок -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Поиск клиента -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Список найденных клиентов -->
+                        <RowDefinition Height="180" />
+                        <!-- Разделитель -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Карточка / форма редактирования клиента -->
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Заголовок -->
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                        <TextBlock Text="👥  " FontSize="18" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="Пассажиры и клиенты"
+                                   FontSize="15"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource PrimaryDarkBrush}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Поиск клиента -->
+                    <Grid Grid.Row="1" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding ClientSearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                 Height="34"
+                                 Padding="8,6"
+                                 FontSize="13" />
+                        <Button Grid.Column="2"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding SearchClientsCommand}"
+                                Height="34"
+                                Padding="12,0">
+                            <TextBlock Text="🔍" />
+                        </Button>
+                    </Grid>
+
+                    <!-- Список найденных клиентов -->
+                    <Border Grid.Row="2"
+                            BorderBrush="{StaticResource SurfaceBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Margin="0,0,0,12">
+                        <ListBox ItemsSource="{Binding FoundClients}"
+                                 SelectedItem="{Binding SelectedClient}"
+                                 BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type clients:ClientDto}">
+                                    <Border Padding="8,6" BorderBrush="#EEEEEE" BorderThickness="0,0,0,1">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding FullName}" FontWeight="SemiBold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                <TextBlock Text="Паспорт: " FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                                                <TextBlock Text="{Binding DocumentNumber}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource PrimaryDarkBrush}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+
+                    <!-- Разделитель -->
+                    <Border Grid.Row="3" Height="1" Background="{StaticResource SurfaceBorderBrush}" Margin="0,0,0,12" />
+
+                    <!-- Карточка выбранного / нового клиента -->
+                    <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0"
+                                           Text="Карточка клиента"
+                                           FontWeight="Bold"
+                                           FontSize="13"
+                                           Foreground="{StaticResource PrimaryDarkBrush}"
+                                           VerticalAlignment="Center" />
+                                <Button Grid.Column="1"
+                                        Style="{StaticResource OutlineButtonStyle}"
+                                        Command="{Binding StartNewClientCommand}"
+                                        Padding="8,4"
+                                        FontSize="11">
+                                    <TextBlock Text="➕ Новый" />
+                                </Button>
+                            </Grid>
+
+                            <!-- ФИО -->
+                            <TextBlock Text="ФИО пассажира *" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                            <TextBox Text="{Binding EditFullName, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="32"
+                                     Padding="8,5"
+                                     FontSize="12"
+                                     Margin="0,0,0,8" />
+
+                            <!-- Паспорт -->
+                            <TextBlock Text="Серия и номер паспорта *" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                            <TextBox Text="{Binding EditDocumentNumber, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="32"
+                                     Padding="8,5"
+                                     FontSize="12"
+                                     Margin="0,0,0,8" />
+
+                            <!-- Телефон -->
+                            <TextBlock Text="Контактный телефон" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                            <TextBox Text="{Binding EditPhone, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="32"
+                                     Padding="8,5"
+                                     FontSize="12"
+                                     Margin="0,0,0,8" />
+
+                            <!-- Email -->
+                            <TextBlock Text="Электронная почта" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                            <TextBox Text="{Binding EditEmail, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="32"
+                                     Padding="8,5"
+                                     FontSize="12"
+                                     Margin="0,0,0,12" />
+
+                            <!-- Кнопка сохранения -->
+                            <Button Style="{StaticResource PrimaryButtonStyle}"
+                                    Command="{Binding SaveClientCommand}"
+                                    Height="36">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="💾  " />
+                                    <TextBlock Text="Сохранить клиента" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- ЦЕНТРАЛЬНАЯ КОЛОНКА: Продажи и быстрый возврат -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <!-- Баннер быстрого возврата -->
+                    <RowDefinition Height="Auto" />
+                    <!-- Карточка перехода к новой продаже билетов -->
+                    <RowDefinition Height="Auto" />
+                    <!-- Таблица последних заказов смены -->
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Баннер быстрого возврата билета по номеру -->
+                <Border Grid.Row="0"
+                        Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource SurfaceBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="18"
+                        Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="↩  " FontSize="18" Foreground="{StaticResource AccentDarkBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="Быстрый возврат авиабилета (W-09)"
+                                       FontSize="15"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource PrimaryDarkBrush}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBox Grid.Column="0"
+                                     Text="{Binding TicketNumberToRefund, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="38"
+                                     Padding="12,8"
+                                     FontSize="14"
+                                     VerticalContentAlignment="Center" />
+
+                            <Button Grid.Column="2"
+                                    Style="{StaticResource AccentButtonStyle}"
+                                    Command="{Binding OpenRefundByNumberCommand}"
+                                    Height="38"
+                                    Padding="18,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="↩  " />
+                                    <TextBlock Text="Оформить возврат" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- Карточка начала новой продажи билетов -->
+                <Border Grid.Row="1"
+                        Background="{StaticResource PrimaryLightBrush}"
+                        BorderBrush="{StaticResource PrimaryBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="18"
+                        Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="Пошаговый мастер продажи билетов в кассе"
+                                       FontSize="15"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource PrimaryDarkBrush}" />
+                            <TextBlock Text="Выбор рейса (W-03), интерактивная схема кресел (W-04), ввод пассажиров (W-05) и приём оплаты (W-06)."
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Margin="0,4,0,0" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SelectedClient}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Выбранный пассажир: " FontSize="12" Foreground="{StaticResource PrimaryDarkBrush}" />
+                                <TextBlock Text="{Binding SelectedClient.FullName}" FontWeight="Bold" FontSize="12" Foreground="{StaticResource PrimaryDarkBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding StartNewSaleCommand}"
+                                Height="42"
+                                Padding="20,0"
+                                VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="✈  " />
+                                <TextBlock Text="Начать продажу билетов" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- Таблица последних заказов кассира -->
+                <Border Grid.Row="2"
+                        Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource SurfaceBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="18">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   Text="Последние оформленные заказы кассира"
+                                   FontSize="15"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource PrimaryDarkBrush}"
+                                   Margin="0,0,0,12" />
+
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding RecentOrders}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type orders:OrderDto}">
+                                        <Border Background="{StaticResource BackgroundBrush}"
+                                                BorderBrush="{StaticResource SurfaceBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="8"
+                                                Padding="14,10"
+                                                Margin="0,0,0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding OrderNumber}" FontWeight="Bold" FontSize="14" Foreground="{StaticResource PrimaryDarkBrush}" />
+                                                        <TextBlock Text="{Binding CreatedAt, StringFormat=' • {0:dd.MM.yyyy HH:mm}'}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                                                    </StackPanel>
+
+                                                    <TextBlock Text="{Binding Tickets.Count, StringFormat='Билетов в заказе: {0}'}"
+                                                               FontSize="12"
+                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                               Margin="0,3,0,0" />
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding TotalAmount, StringFormat='{}{0:N0} ₽'}"
+                                                               FontWeight="Bold"
+                                                               FontSize="15"
+                                                               Foreground="{StaticResource PrimaryDarkBrush}"
+                                                               HorizontalAlignment="Right" />
+                                                    <TextBlock Text="{Binding Status}"
+                                                               FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               HorizontalAlignment="Right" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- ПРАВАЯ КОЛОНКА: Итоги смены кассира -->
+            <Border Grid.Column="4"
+                    Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource SurfaceBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="18">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <!-- Заголовок -->
+                        <RowDefinition Height="Auto" />
+                        <!-- Карточки показателей -->
+                        <RowDefinition Height="*" />
+                        <!-- Кнопка обновления -->
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
+                        <TextBlock Text="📊  " FontSize="18" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="Итоги смены"
+                                   FontSize="15"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource PrimaryDarkBrush}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Карточки показателей смены -->
+                    <StackPanel Grid.Row="1">
+                        <!-- Билетов продано -->
+                        <Border Background="{StaticResource BackgroundBrush}"
+                                CornerRadius="8"
+                                Padding="14,10"
+                                Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Билетов продано" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding TicketsSoldCount}" FontWeight="Bold" FontSize="16" Foreground="{StaticResource TextPrimaryBrush}" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Принято наличными -->
+                        <Border Background="{StaticResource BackgroundBrush}"
+                                CornerRadius="8"
+                                Padding="14,10"
+                                Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Наличные (касса)" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding CashTotal, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" FontSize="15" Foreground="{StaticResource TextPrimaryBrush}" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Принято картами -->
+                        <Border Background="{StaticResource BackgroundBrush}"
+                                CornerRadius="8"
+                                Padding="14,10"
+                                Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Банковские карты" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding CardTotal, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" FontSize="15" Foreground="{StaticResource TextPrimaryBrush}" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Возвраты за смену -->
+                        <Border Background="#FFEBEE"
+                                CornerRadius="8"
+                                Padding="14,10"
+                                Margin="0,0,0,14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Возвраты (выплаты)" FontSize="12" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding RefundsTotal, StringFormat='-{}{0:N0} ₽'}" FontWeight="Bold" FontSize="15" Foreground="{StaticResource DangerBrush}" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Итоговая чистая выручка -->
+                        <Border Background="#E8F5E9"
+                                BorderBrush="{StaticResource SuccessBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="16,12">
+                            <StackPanel>
+                                <TextBlock Text="Чистая выручка смены"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="#2E7D32"
+                                           Margin="0,0,0,4" />
+                                <TextBlock Text="{Binding NetRevenue, StringFormat='{}{0:N0} ₽'}"
+                                           FontSize="22"
+                                           FontWeight="Bold"
+                                           Foreground="#2E7D32" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Кнопка обновления показателей смены -->
+                    <Button Grid.Row="2"
+                            Style="{StaticResource OutlineButtonStyle}"
+                            Command="{Binding RefreshShiftSummaryCommand}"
+                            Height="38"
+                            Margin="0,12,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🔄  " />
+                            <TextBlock Text="Обновить итоги смены" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -168,6 +168,40 @@ public class FlightService : IFlightService
     }
 
     /// <inheritdoc />
+    public IReadOnlyList<FlightDetailsDto> GetAllFlights()
+    {
+        var flights = _dbContext.Flights
+            .AsNoTracking()
+            .Include(f => f.OriginAirport)
+            .Include(f => f.DestinationAirport)
+            .Include(f => f.Aircraft)
+                .ThenInclude(a => a!.AircraftType)
+            .Include(f => f.Seats)
+            .OrderByDescending(f => f.DepartureTime)
+            .ToList();
+
+        return flights.Select(flight => new FlightDetailsDto
+        {
+            Id = flight.Id,
+            FlightNumber = flight.FlightNumber,
+            OriginAirportId = flight.OriginAirportId,
+            OriginAirportCode = flight.OriginAirport?.Code ?? string.Empty,
+            OriginCity = flight.OriginAirport?.City ?? string.Empty,
+            DestinationAirportId = flight.DestinationAirportId,
+            DestinationAirportCode = flight.DestinationAirport?.Code ?? string.Empty,
+            DestinationCity = flight.DestinationAirport?.City ?? string.Empty,
+            AircraftId = flight.AircraftId,
+            AircraftTailNumber = flight.Aircraft?.TailNumber ?? string.Empty,
+            AircraftModel = flight.Aircraft?.AircraftType?.Name ?? string.Empty,
+            DepartureTime = flight.DepartureTime,
+            ArrivalTime = flight.ArrivalTime,
+            Status = flight.Status,
+            TotalSeats = flight.Seats.Count,
+            AvailableSeats = flight.Seats.Count(s => s.State == SeatState.Available)
+        }).ToList();
+    }
+
+    /// <inheritdoc />
     public IReadOnlyList<FlightListItemDto> SearchFlights(
         int originAirportId,
         int destinationAirportId,

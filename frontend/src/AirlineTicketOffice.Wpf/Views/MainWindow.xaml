@@ -1,0 +1,389 @@
+<Window x:Class="AirlineTicketOffice.Wpf.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:AirlineTicketOffice.Wpf.ViewModels"
+        mc:Ignorable="d"
+        Title="Авиакасса — Главное окно"
+        Width="1280" Height="800"
+        MinWidth="1024" MinHeight="680"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Normal"
+        Background="{StaticResource BackgroundBrush}">
+
+    <Window.Resources>
+        <!-- Шаблон отображения раздела-заглушки (PlaceholderViewModel) -->
+        <DataTemplate DataType="{x:Type vm:PlaceholderViewModel}">
+            <Border Background="{StaticResource SurfaceBrush}"
+                    BorderBrush="{StaticResource SurfaceBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="32">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Шапка модуля -->
+                    <Grid Grid.Row="0" Margin="0,0,0,24">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Иконка раздела -->
+                        <Border Grid.Column="0"
+                                Width="54" Height="54"
+                                CornerRadius="27"
+                                Background="{StaticResource PrimaryLightBrush}"
+                                Margin="0,0,16,0">
+                            <TextBlock Text="{Binding Icon}"
+                                       FontSize="24"
+                                       Foreground="{StaticResource PrimaryDarkBrush}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
+
+                        <!-- Название раздела -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Title}"
+                                       FontSize="22"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource PrimaryDarkBrush}" />
+                            <TextBlock Text="Автоматизированное рабочее место «Авиакасса»"
+                                       FontSize="13"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Margin="0,4,0,0" />
+                        </StackPanel>
+
+                        <!-- Бейдж окна и инкремента -->
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                            <Border Background="{StaticResource PrimaryLightBrush}"
+                                    CornerRadius="6"
+                                    Padding="10,4"
+                                    HorizontalAlignment="Right"
+                                    Margin="0,0,0,4">
+                                <TextBlock Text="{Binding WindowCode}"
+                                           FontWeight="Bold"
+                                           FontSize="12"
+                                           Foreground="{StaticResource PrimaryDarkBrush}" />
+                            </Border>
+                            <TextBlock Text="{Binding PlannedIncrement}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       HorizontalAlignment="Right" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Separator Grid.Row="1" Background="{StaticResource SurfaceBorderBrush}" Margin="0,0,0,24" />
+
+                    <!-- Описание и функционал -->
+                    <StackPanel Grid.Row="2" VerticalAlignment="Top">
+                        <TextBlock Text="Описание и функциональные возможности:"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Margin="0,0,0,8" />
+                        <TextBlock Text="{Binding Description}"
+                                   FontSize="14"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap"
+                                   LineHeight="22"
+                                   Margin="0,0,0,24" />
+
+                        <!-- Информационная плашка готовности бэкенда -->
+                        <Border Background="#F1F8E9"
+                                BorderBrush="#C8E6C9"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="✔" FontSize="18" Foreground="{StaticResource SuccessBrush}" Margin="0,0,12,0" VerticalAlignment="Top" />
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="Бизнес-логика ядра Core (M1–M15) полностью готова"
+                                               FontWeight="SemiBold"
+                                               FontSize="13"
+                                               Foreground="#2E7D32" />
+                                    <TextBlock Text="Все соответствующие сервисы зарегистрированы в DI-контейнере и готовы к привязке пользовательского интерфейса."
+                                               FontSize="12"
+                                               Foreground="#558B2F"
+                                               Margin="0,4,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Нижняя строка состояния модуля -->
+                    <Border Grid.Row="3"
+                            BorderThickness="0,1,0,0"
+                            BorderBrush="{StaticResource SurfaceBorderBrush}"
+                            Padding="0,16,0,0">
+                        <TextBlock Text="Каркас WPF-приложения успешно инициализирован. Выберите интересующий раздел в левом меню навигации."
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextMutedBrush}" />
+                    </Border>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- 1. TopBar (Верхняя панель) -->
+            <RowDefinition Height="60" />
+            <!-- 2. Основная рабочая область (NavBar + MainContent) -->
+            <RowDefinition Height="*" />
+            <!-- 3. StatusBar (Нижняя строка состояния) -->
+            <RowDefinition Height="34" />
+        </Grid.RowDefinitions>
+
+        <!-- TopBar (Верхняя панель) -->
+        <Border Grid.Row="0"
+                Background="{StaticResource PrimaryDarkBrush}"
+                Padding="24,0">
+            <Grid VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <!-- Логотип системы -->
+                    <ColumnDefinition Width="Auto" />
+                    <!-- Разделитель -->
+                    <ColumnDefinition Width="*" />
+                    <!-- Управление ролью и эмулятором -->
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Логотип «АВИАКАССА» -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="✈"
+                               FontSize="22"
+                               Foreground="White"
+                               Margin="0,0,10,0"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="АВИАКАССА"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Правая часть панели: Бейдж роли, кнопки «Сменить роль» и «Эмулятор (W-16)» -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Бейдж текущей роли -->
+                    <Border Background="White"
+                            CornerRadius="14"
+                            Padding="14,5"
+                            Margin="0,0,16,0"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{Binding CurrentRoleBadge}"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"
+                                   Foreground="{StaticResource PrimaryDarkBrush}" />
+                    </Border>
+
+                    <!-- Кнопка «Сменить роль» -->
+                    <Button Style="{StaticResource OutlineButtonStyle}"
+                            Command="{Binding SwitchRoleCommand}"
+                            Foreground="White"
+                            BorderBrush="White"
+                            Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="👤" Margin="0,0,6,0" />
+                            <TextBlock Text="Сменить роль" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Кнопка «Эмулятор (W-16)» -->
+                    <Button Style="{StaticResource AccentButtonStyle}"
+                            Command="{Binding OpenEmulatorCommand}"
+                            Padding="14,6">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="⚡" Margin="0,0,6,0" />
+                            <TextBlock Text="Эмулятор (W-16)" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Основная рабочая область (NavBar + MainContent) -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <!-- NavBar (Левое навигационное меню) -->
+                <ColumnDefinition Width="280" />
+                <!-- MainContent (Рабочая область) -->
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Левое меню навигации (NavBar) -->
+            <Border Grid.Column="0"
+                    Background="{StaticResource SurfaceBrush}"
+                    BorderThickness="0,0,1,0"
+                    BorderBrush="{StaticResource SurfaceBorderBrush}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="16,20,16,20">
+                        <TextBlock Text="РАЗДЕЛЫ СИСТЕМЫ"
+                                   FontSize="11"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Margin="12,0,0,12" />
+
+                        <!-- Пассажир: «Поиск и бронирование» (W-03) -->
+                        <Button Style="{StaticResource NavButtonStyle}"
+                                Command="{Binding NavigateToFlightSearchCommand}"
+                                Visibility="{Binding CanAccessFlightSearch, Converter={StaticResource BoolToVisConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="✈" Width="24" FontSize="14" Foreground="{StaticResource PrimaryBrush}" />
+                                <TextBlock Text="Поиск и бронирование (W-03)" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Пассажир: «Мои билеты» (W-07) -->
+                        <Button Style="{StaticResource NavButtonStyle}"
+                                Command="{Binding NavigateToMyTicketsCommand}"
+                                Visibility="{Binding CanAccessMyTickets, Converter={StaticResource BoolToVisConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🎫" Width="24" FontSize="14" Foreground="{StaticResource PrimaryBrush}" />
+                                <TextBlock Text="Мои билеты (W-07)" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Кассир: «Рабочее место кассира» (W-08) -->
+                        <Button Style="{StaticResource NavButtonStyle}"
+                                Command="{Binding NavigateToCashierDeskCommand}"
+                                Visibility="{Binding CanAccessCashierDesk, Converter={StaticResource BoolToVisConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="💳" Width="24" FontSize="14" Foreground="{StaticResource PrimaryBrush}" />
+                                <TextBlock Text="Рабочее место кассира (W-08)" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Кассир: «Возврат билета» (W-09) -->
+                        <Button Style="{StaticResource NavButtonStyle}"
+                                Command="{Binding NavigateToRefundsCommand}"
+                                Visibility="{Binding CanAccessRefunds, Converter={StaticResource BoolToVisConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="↩" Width="24" FontSize="14" Foreground="{StaticResource PrimaryBrush}" />
+                                <TextBlock Text="Возврат билета (W-09)" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Админ: «Справочники» (W-11) -->
+                        <Button Style="{StaticResource NavButtonStyle}"
+                                Command="{Binding NavigateToDirectoriesCommand}"
+                                Visibility="{Binding CanAccessDirectories, Converter={StaticResource BoolToVisConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📚" Width="24" FontSize="14" Foreground="{StaticResource PrimaryBrush}" />
+                                <TextBlock Text="Справочники (W-11)" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Админ: «Рейсы» (W-12) -->
+                        <Button Style="{StaticResource NavButtonStyle}"
+                                Command="{Binding NavigateToFlightsAdminCommand}"
+                                Visibility="{Binding CanAccessFlightsAdmin, Converter={StaticResource BoolToVisConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🗓" Width="24" FontSize="14" Foreground="{StaticResource PrimaryBrush}" />
+                                <TextBlock Text="Рейсы (W-12)" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Админ: «Тарифы» (W-13) -->
+                        <Button Style="{StaticResource NavButtonStyle}"
+                                Command="{Binding NavigateToTariffsAdminCommand}"
+                                Visibility="{Binding CanAccessTariffsAdmin, Converter={StaticResource BoolToVisConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🏷" Width="24" FontSize="14" Foreground="{StaticResource PrimaryBrush}" />
+                                <TextBlock Text="Тарифы (W-13)" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Админ: «Отчёты» (W-14) -->
+                        <Button Style="{StaticResource NavButtonStyle}"
+                                Command="{Binding NavigateToReportsCommand}"
+                                Visibility="{Binding CanAccessReports, Converter={StaticResource BoolToVisConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📊" Width="24" FontSize="14" Foreground="{StaticResource PrimaryBrush}" />
+                                <TextBlock Text="Отчёты (W-14)" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Админ: «Журнал аудита» (W-15) -->
+                        <Button Style="{StaticResource NavButtonStyle}"
+                                Command="{Binding NavigateToAuditLogCommand}"
+                                Visibility="{Binding CanAccessAuditLog, Converter={StaticResource BoolToVisConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🛡" Width="24" FontSize="14" Foreground="{StaticResource PrimaryBrush}" />
+                                <TextBlock Text="Журнал аудита (W-15)" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Основное рабочее пространство (MainContent) -->
+            <Border Grid.Column="1"
+                    Background="{StaticResource BackgroundBrush}"
+                    Padding="32">
+                <ContentControl Content="{Binding CurrentView}" />
+            </Border>
+        </Grid>
+
+        <!-- StatusBar (Нижняя строка состояния) -->
+        <Border Grid.Row="2"
+                Background="#ECEFF1"
+                BorderThickness="0,1,0,0"
+                BorderBrush="#CFD8DC"
+                Padding="20,0">
+            <Grid VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Левая часть: Виртуальное время и режим -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="🕒 " FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding CurrentTimeDisplay}"
+                               FontWeight="SemiBold"
+                               FontSize="12"
+                               Foreground="{StaticResource TextPrimaryBrush}" />
+
+                    <Border Width="1" Height="14" Background="#CFD8DC" Margin="16,0" />
+
+                    <TextBlock Text="⏱ Режим: " FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding ClockModeDisplay}"
+                               FontWeight="Medium"
+                               FontSize="12"
+                               Foreground="{StaticResource TextPrimaryBrush}" />
+                </StackPanel>
+
+                <!-- Правая часть: Статус ядра и активная роль -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="● " Foreground="{StaticResource SuccessBrush}" FontSize="12" />
+                    <TextBlock Text="{Binding KernelStatus}"
+                               FontWeight="SemiBold"
+                               FontSize="12"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               Margin="0,0,16,0" />
+
+                    <Border Width="1" Height="14" Background="#CFD8DC" Margin="0,0,16,0" />
+
+                    <TextBlock Text="Сеанс: " FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
+                    <TextBlock Text="{Binding CurrentRoleName}"
+                               FontWeight="Bold"
+                               FontSize="12"
+                               Foreground="{StaticResource PrimaryDarkBrush}" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

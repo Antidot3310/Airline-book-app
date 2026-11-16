@@ -323,6 +323,56 @@ public class OrderTicketService : IOrderTicketService
     }
 
     /// <inheritdoc />
+    public Result<TicketDto> GetTicketById(int ticketId)
+    {
+        var ticket = _dbContext.Tickets
+            .AsNoTracking()
+            .Include(t => t.Order)
+            .Include(t => t.Client)
+            .Include(t => t.FlightSeat)
+            .Include(t => t.Flight)
+                .ThenInclude(f => f!.OriginAirport)
+            .Include(t => t.Flight)
+                .ThenInclude(f => f!.DestinationAirport)
+            .FirstOrDefault(t => t.Id == ticketId);
+
+        if (ticket == null)
+        {
+            return Result<TicketDto>.Failure($"Билет с ID {ticketId} не найден.");
+        }
+
+        return Result<TicketDto>.Success(MapToTicketDto(ticket));
+    }
+
+    /// <inheritdoc />
+    public Result<TicketDto> GetTicketByNumber(string ticketNumber)
+    {
+        var trimmedNumber = ticketNumber?.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedNumber))
+        {
+            return Result<TicketDto>.Failure("Номер билета не может быть пустым.");
+        }
+
+        var ticket = _dbContext.Tickets
+            .AsNoTracking()
+            .Include(t => t.Order)
+            .Include(t => t.Client)
+            .Include(t => t.FlightSeat)
+            .Include(t => t.Flight)
+                .ThenInclude(f => f!.OriginAirport)
+            .Include(t => t.Flight)
+                .ThenInclude(f => f!.DestinationAirport)
+            .FirstOrDefault(t => t.TicketNumber == trimmedNumber);
+
+        if (ticket == null)
+        {
+            return Result<TicketDto>.Failure($"Билет с номером «{trimmedNumber}» не найден.");
+        }
+
+        return Result<TicketDto>.Success(MapToTicketDto(ticket));
+    }
+
+    /// <inheritdoc />
     public IReadOnlyList<TicketDto> GetTicketsByClientDocument(string documentNumber)
     {
         var trimmedDoc = documentNumber?.Trim();
@@ -345,7 +395,15 @@ public class OrderTicketService : IOrderTicketService
             .ThenByDescending(t => t.Id)
             .ToList();
 
-        return tickets.Select(t => new TicketDto
+        return tickets.Select(MapToTicketDto).ToList();
+    }
+
+    /// <summary>
+    /// Маппит сущность <see cref="Ticket"/> в DTO <see cref="TicketDto"/>.
+    /// </summary>
+    private static TicketDto MapToTicketDto(Ticket t)
+    {
+        return new TicketDto
         {
             Id = t.Id,
             TicketNumber = t.TicketNumber,
@@ -365,7 +423,7 @@ public class OrderTicketService : IOrderTicketService
             DepartureTime = t.Flight?.DepartureTime ?? default,
             OriginAirportCode = t.Flight?.OriginAirport?.Code ?? string.Empty,
             DestinationAirportCode = t.Flight?.DestinationAirport?.Code ?? string.Empty
-        }).ToList();
+        };
     }
 
     /// <inheritdoc />

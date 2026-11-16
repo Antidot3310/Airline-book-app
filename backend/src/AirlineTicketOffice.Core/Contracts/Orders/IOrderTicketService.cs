@@ -37,6 +37,20 @@ public interface IOrderTicketService
     Result<OrderDto> GetOrderByNumber(string orderNumber);
 
     /// <summary>
+    /// Возвращает билет по его уникальному числовому идентификатору.
+    /// </summary>
+    /// <param name="ticketId">Идентификатор билета.</param>
+    /// <returns>Результат с DTO найденного билета <see cref="TicketDto"/>.</returns>
+    Result<TicketDto> GetTicketById(int ticketId);
+
+    /// <summary>
+    /// Возвращает билет по его номеру (например, "TKT-A1B2C3D4E5").
+    /// </summary>
+    /// <param name="ticketNumber">Номер билета.</param>
+    /// <returns>Результат с DTO найденного билета <see cref="TicketDto"/>.</returns>
+    Result<TicketDto> GetTicketByNumber(string ticketNumber);
+
+    /// <summary>
     /// Возвращает список всех билетов, оформленных на пассажира с указанным номером документа.
     /// </summary>
     /// <param name="documentNumber">Номер документа пассажира (паспорт).</param>

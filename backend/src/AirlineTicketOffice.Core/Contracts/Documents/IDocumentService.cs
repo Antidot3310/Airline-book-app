@@ -25,6 +25,14 @@ public interface IDocumentService
     PrintDocumentDto GeneratePaymentReceipt(int paymentId);
 
     /// <summary>
+    /// Формирует кассовый чек / квитанцию об оплате для указанного заказа.
+    /// </summary>
+    /// <param name="orderId">Идентификатор заказа.</param>
+    /// <returns>Сформированный печатный документ.</returns>
+    /// <exception cref="KeyNotFoundException">Выбрасывается, если платёж по заказу не найден.</exception>
+    PrintDocumentDto GeneratePaymentReceiptForOrder(int orderId);
+
+    /// <summary>
     /// Формирует квитанцию о возврате авиабилета.
     /// </summary>
     /// <param name="refundId">Идентификатор возврата.</param>
