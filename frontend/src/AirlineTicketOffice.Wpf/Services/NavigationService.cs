@@ -58,12 +58,17 @@ public class NavigationService : INavigationService
     /// <inheritdoc />
     public void OpenEmulatorWindow()
     {
-        MessageBox.Show(
-            "Служебный пульт управления эмулятором (W-16) будет подключен в Инкременте 40.\n" +
-            "В нём будут доступны: сдвиг виртуального времени, выбор исходов оплаты и ручной резолв таймаутов.",
-            "Эмулятор W-16",
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        var emulatorVm = _serviceProvider.GetRequiredService<EmulatorViewModel>();
+        var emulatorWindow = _serviceProvider.GetRequiredService<EmulatorWindow>();
+        emulatorWindow.DataContext = emulatorVm;
+        emulatorVm.CloseRequested += () => emulatorWindow.Close();
+
+        if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
+        {
+            emulatorWindow.Owner = Application.Current.MainWindow;
+        }
+
+        emulatorWindow.Show();
     }
 
     /// <inheritdoc />

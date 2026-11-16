@@ -1,0 +1,226 @@
+<UserControl x:Class="AirlineTicketOffice.Wpf.Views.AuditLogView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:AirlineTicketOffice.Wpf.ViewModels"
+             xmlns:audit="clr-namespace:AirlineTicketOffice.Core.Contracts.Audit;assembly=AirlineTicketOffice.Core"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:AuditLogViewModel}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- 1. Панель параметров и фильтров -->
+            <RowDefinition Height="Auto" />
+            <!-- 2. Баннер уведомлений -->
+            <RowDefinition Height="Auto" />
+            <!-- 3. Таблица журнала аудита -->
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 1. Шапка и фильтры -->
+        <Border Grid.Row="0"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource SurfaceBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="20,16"
+                Margin="0,0,0,14">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="🛡  " FontSize="20" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="Журнал аудита операций (W-15)"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource PrimaryDarkBrush}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,12,0" />
+                        <Border Background="{StaticResource PrimaryLightBrush}" CornerRadius="6" Padding="8,3" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding TotalLogsCount, StringFormat='Всего записей: {0}'}"
+                                       FontWeight="Bold"
+                                       FontSize="12"
+                                       Foreground="{StaticResource PrimaryDarkBrush}" />
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource PrimaryButtonStyle}"
+                                Command="{Binding RefreshLogsCommand}"
+                                Padding="16,8"
+                                Margin="0,0,10,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🔍  " />
+                                <TextBlock Text="Применить фильтры" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button Style="{StaticResource OutlineButtonStyle}"
+                                Command="{Binding ResetFiltersCommand}"
+                                Padding="14,8">
+                            <TextBlock Text="Сброс" />
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Поля фильтрации -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <!-- Дата с -->
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="12" />
+                        <!-- Дата по -->
+                        <ColumnDefinition Width="140" />
+                        <ColumnDefinition Width="16" />
+                        <!-- Роль -->
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="16" />
+                        <!-- Поиск по действию -->
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Дата с -->
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Дата с" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <DatePicker SelectedDate="{Binding FromDate}" Height="34" />
+                    </StackPanel>
+
+                    <!-- Дата по -->
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Дата по" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <DatePicker SelectedDate="{Binding ToDate}" Height="34" />
+                    </StackPanel>
+
+                    <!-- Роль -->
+                    <StackPanel Grid.Column="4">
+                        <TextBlock Text="Роль инициатора" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <ComboBox SelectedIndex="{Binding SelectedRoleIndex}" Height="34">
+                            <ComboBoxItem Content="Все роли" />
+                            <ComboBoxItem Content="Администратор" />
+                            <ComboBoxItem Content="Кассир" />
+                            <ComboBoxItem Content="Пассажир" />
+                            <ComboBoxItem Content="Системный процесс" />
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- Поиск по действию -->
+                    <StackPanel Grid.Column="6">
+                        <TextBlock Text="Поиск по действию или описанию" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <TextBox Text="{Binding ActionFilter, UpdateSourceTrigger=PropertyChanged}"
+                                 Height="34"
+                                 Padding="8,6"
+                                 FontSize="13" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- 2. Баннер уведомлений -->
+        <Border Grid.Row="1"
+                Background="{StaticResource PrimaryLightBrush}"
+                BorderBrush="{StaticResource PrimaryBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16,10"
+                Margin="0,0,0,14">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding StatusMessage}" Value="{x:Null}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="ℹ️  " FontSize="16" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding StatusMessage}"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource PrimaryDarkBrush}"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap" />
+            </Grid>
+        </Border>
+
+        <!-- 3. Таблица журнала аудита -->
+        <Border Grid.Row="2"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource SurfaceBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="16">
+            <DataGrid ItemsSource="{Binding Logs}"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      IsReadOnly="True"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      HorizontalGridLinesBrush="#EEEEEE"
+                      Background="Transparent"
+                      BorderThickness="0"
+                      RowHeight="40">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Виртуальное время" Binding="{Binding VirtualTime, StringFormat='{}{0:dd.MM.yyyy HH:mm:ss}'}" FontWeight="SemiBold" Width="170" />
+                    <DataGridTextColumn Header="Реальное время" Binding="{Binding RealTime, StringFormat='{}{0:dd.MM.yyyy HH:mm:ss}'}" Foreground="{StaticResource TextSecondaryBrush}" Width="160" />
+
+                    <DataGridTemplateColumn Header="Роль" Width="140">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate DataType="{x:Type audit:AuditLogDto}">
+                                <Border CornerRadius="4" Padding="6,2" HorizontalAlignment="Left">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#1E88E5" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Role}" Value="Administrator">
+                                                    <Setter Property="Background" Value="#7E57C2" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Role}" Value="Cashier">
+                                                    <Setter Property="Background" Value="#FF9800" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Role}" Value="System">
+                                                    <Setter Property="Background" Value="#607D8B" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding Role}" Foreground="White" FontSize="11" FontWeight="Bold" />
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTextColumn Header="Действие" Binding="{Binding ActionType}" FontWeight="Bold" Foreground="{StaticResource PrimaryDarkBrush}" Width="160" />
+
+                    <DataGridTemplateColumn Header="Сущность" Width="130">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate DataType="{x:Type audit:AuditLogDto}">
+                                <TextBlock VerticalAlignment="Center">
+                                    <Run Text="{Binding EntityName, Mode=OneWay}" FontWeight="SemiBold" />
+                                    <Run Text="{Binding EntityId, StringFormat=' #{0}', Mode=OneWay}" Foreground="{StaticResource TextSecondaryBrush}" />
+                                </TextBlock>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTextColumn Header="Описание события" Binding="{Binding Description}" Width="*" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </Grid>
+</UserControl>

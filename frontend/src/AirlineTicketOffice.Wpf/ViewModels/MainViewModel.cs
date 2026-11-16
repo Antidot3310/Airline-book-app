@@ -34,6 +34,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private DirectoriesViewModel? _directoriesViewModel;
     private FlightsAdminViewModel? _flightsAdminViewModel;
     private TariffsAdminViewModel? _tariffsAdminViewModel;
+    private ReportsViewModel? _reportsViewModel;
+    private AuditLogViewModel? _auditLogViewModel;
 
     [ObservableProperty]
     private string _currentTimeDisplay = string.Empty;
@@ -416,14 +418,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void NavigateToReports()
     {
-        CurrentView = new PlaceholderViewModel
+        if (_reportsViewModel == null)
         {
-            Title = "Аналитические отчёты",
-            WindowCode = "W-14",
-            PlannedIncrement = "Инкремент 40",
-            Icon = "📊",
-            Description = "Формирование и выгрузка аналитики: отчёты по загрузке рейсов, финансовой выручке, популярности направлений и статистике возвратов билетов."
-        };
+            _reportsViewModel = _serviceProvider.GetRequiredService<ReportsViewModel>();
+        }
+        else
+        {
+            _reportsViewModel.GenerateReport();
+        }
+
+        CurrentView = _reportsViewModel;
     }
 
     /// <summary>
@@ -432,14 +436,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void NavigateToAuditLog()
     {
-        CurrentView = new PlaceholderViewModel
+        if (_auditLogViewModel == null)
         {
-            Title = "Журнал аудита операций",
-            WindowCode = "W-15",
-            PlannedIncrement = "Инкремент 40",
-            Icon = "🛡",
-            Description = "Просмотр хронологического журнала системных действий: создание броней, проведение платежей, возвраты, отмены рейсов и входы пользователей."
-        };
+            _auditLogViewModel = _serviceProvider.GetRequiredService<AuditLogViewModel>();
+        }
+        else
+        {
+            _auditLogViewModel.RefreshLogs();
+        }
+
+        CurrentView = _auditLogViewModel;
     }
 
     /// <summary>
