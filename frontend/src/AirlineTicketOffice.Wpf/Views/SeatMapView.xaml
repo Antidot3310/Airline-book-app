@@ -1,0 +1,357 @@
+<UserControl x:Class="AirlineTicketOffice.Wpf.Views.SeatMapView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:AirlineTicketOffice.Wpf.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance vm:SeatMapViewModel}">
+
+    <UserControl.Resources>
+        <!-- Шаблон кнопки кресла на схеме салона -->
+        <DataTemplate x:Key="SeatButtonTemplate" DataType="{x:Type vm:SeatItemViewModel}">
+            <Button Width="40" Height="40"
+                    Margin="3"
+                    Cursor="Hand"
+                    ToolTip="{Binding TooltipText}"
+                    Command="{Binding DataContext.ToggleSeatCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    CommandParameter="{Binding}">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="seatBorder"
+                                Background="{Binding BackgroundBrush}"
+                                CornerRadius="6"
+                                SnapsToDevicePixels="True">
+                            <TextBlock Text="{Binding Letter}"
+                                       Foreground="{Binding ForegroundHex}"
+                                       FontWeight="Bold"
+                                       FontSize="12"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="seatBorder" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsSelectable}" Value="False">
+                                <Setter Property="Cursor" Value="No" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- 1. Верхняя карточка информации о рейсе -->
+            <RowDefinition Height="Auto" />
+            <!-- 2. Схема салона (скроллируемая область) -->
+            <RowDefinition Height="*" />
+            <!-- 3. Легенда цветов -->
+            <RowDefinition Height="Auto" />
+            <!-- 4. Нижняя панель действий (итоги и переход к оформлению) -->
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 1. Верхняя информационная плашка о рейсе -->
+        <Border Grid.Row="0"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource SurfaceBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="20,16"
+                Margin="0,0,0,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Данные рейса -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Background="{StaticResource PrimaryLightBrush}"
+                                CornerRadius="6"
+                                Padding="8,4"
+                                Margin="0,0,12,0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding FlightNumber, StringFormat='Рейс {0}'}"
+                                       FontWeight="Bold"
+                                       FontSize="14"
+                                       Foreground="{StaticResource PrimaryDarkBrush}" />
+                        </Border>
+                        <TextBlock Text="{Binding RouteInfo}"
+                                   FontWeight="Bold"
+                                   FontSize="16"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,16,0" />
+                        <TextBlock Text="{Binding DepartureTimeText, StringFormat='Вылет: {0}'}"
+                                   FontSize="14"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,16,0" />
+                        <TextBlock Text="{Binding AircraftModel, StringFormat='Борт: {0}'}"
+                                   FontSize="14"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Памятка по выбору мест -->
+                <Border Grid.Column="1"
+                        Background="#FFF8E1"
+                        BorderBrush="#FFE082"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="12,6"
+                        Margin="16,0"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="{Binding RequiredPassengersCount, StringFormat='Требуется выбрать: {0} мест(а)'}"
+                               FontWeight="SemiBold"
+                               FontSize="13"
+                               Foreground="#F57F17" />
+                </Border>
+
+                <!-- Кнопка «Назад к поиску» -->
+                <Button Grid.Column="2"
+                        Style="{StaticResource OutlineButtonStyle}"
+                        Command="{Binding BackCommand}"
+                        Padding="14,8"
+                        VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="← " FontWeight="Bold" />
+                        <TextBlock Text="Назад к поиску" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- 2. Схема салона (скроллируемая область) -->
+        <Border Grid.Row="1"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource SurfaceBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="16"
+                Margin="0,0,0,16">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <StackPanel HorizontalAlignment="Center" Margin="0,10,0,20">
+
+                    <!-- Носовая часть фюзеляжа (Кабина пилотов) -->
+                    <Border Width="380" Height="36"
+                            Background="#ECEFF1"
+                            BorderBrush="{StaticResource SurfaceBorderBrush}"
+                            BorderThickness="1,1,1,0"
+                            CornerRadius="24,24,0,0"
+                            HorizontalAlignment="Center">
+                        <TextBlock Text="✈  Кабина пилотов"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
+
+                    <!-- Салон с рядами кресел -->
+                    <Border Width="380"
+                            Background="#FAFCFF"
+                            BorderBrush="{StaticResource SurfaceBorderBrush}"
+                            BorderThickness="1,0,1,1"
+                            CornerRadius="0,0,16,16"
+                            Padding="20"
+                            HorizontalAlignment="Center">
+                        <ItemsControl ItemsSource="{Binding Rows}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:SeatRowViewModel}">
+                                    <StackPanel Margin="0,2">
+                                        <!-- Заголовок секции класса (Бизнес / Эконом) -->
+                                        <Border Background="#ECEFF1"
+                                                CornerRadius="4"
+                                                Padding="8,3"
+                                                Margin="0,12,0,8"
+                                                HorizontalAlignment="Stretch">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsFirstRowOfClass}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding ClassName}"
+                                                       FontWeight="Bold"
+                                                       FontSize="11"
+                                                       Foreground="#546E7A"
+                                                       HorizontalAlignment="Center" />
+                                        </Border>
+
+                                        <!-- Ряд кресел: Левый блок, Проход (номер ряда), Правый блок -->
+                                        <Grid HorizontalAlignment="Center">
+                                            <Grid.ColumnDefinitions>
+                                                <!-- Левые места (A, B, C или A, C) -->
+                                                <ColumnDefinition Width="Auto" />
+                                                <!-- Проход и номер ряда -->
+                                                <ColumnDefinition Width="Auto" />
+                                                <!-- Правые места (D, E, F) -->
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Левый блок кресел -->
+                                            <ItemsControl Grid.Column="0"
+                                                          ItemsSource="{Binding LeftSeats}"
+                                                          ItemTemplate="{StaticResource SeatButtonTemplate}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                            </ItemsControl>
+
+                                            <!-- Проход салона с номером ряда -->
+                                            <Border Grid.Column="1"
+                                                    Width="34" Height="40"
+                                                    Margin="10,3"
+                                                    Background="#F1F5F9"
+                                                    BorderBrush="#E2E8F0"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4"
+                                                    VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding RowNumber}"
+                                                           FontWeight="Bold"
+                                                           FontSize="12"
+                                                           Foreground="#64748B"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center" />
+                                            </Border>
+
+                                            <!-- Правый блок кресел -->
+                                            <ItemsControl Grid.Column="2"
+                                                          ItemsSource="{Binding RightSeats}"
+                                                          ItemTemplate="{StaticResource SeatButtonTemplate}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                            </ItemsControl>
+                                        </Grid>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+
+        <!-- 3. Легенда цветов -->
+        <Border Grid.Row="2"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource SurfaceBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16,10"
+                Margin="0,0,0,16">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                <!-- Свободно -->
+                <StackPanel Orientation="Horizontal" Margin="12,0">
+                    <Border Width="16" Height="16" CornerRadius="4" Background="#4CAF50" Margin="0,0,6,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Свободно" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Выбрано -->
+                <StackPanel Orientation="Horizontal" Margin="12,0">
+                    <Border Width="16" Height="16" CornerRadius="4" Background="#1E88E5" Margin="0,0,6,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Выбрано вами" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Удержано -->
+                <StackPanel Orientation="Horizontal" Margin="12,0">
+                    <Border Width="16" Height="16" CornerRadius="4" Background="#FF9800" Margin="0,0,6,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Удержано другим заказом" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Занято / Продано -->
+                <StackPanel Orientation="Horizontal" Margin="12,0">
+                    <Border Width="16" Height="16" CornerRadius="4" Background="#9E9E9E" Margin="0,0,6,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Занято / Продано" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                <!-- Заблокировано -->
+                <StackPanel Orientation="Horizontal" Margin="12,0">
+                    <Border Width="16" Height="16" CornerRadius="4" Background="#424242" Margin="0,0,6,0" VerticalAlignment="Center" />
+                    <TextBlock Text="Заблокировано при отмене" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- 4. Нижняя панель действий и итогов -->
+        <Border Grid.Row="3"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource SurfaceBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="24,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <!-- Сводка и стоимость -->
+                    <ColumnDefinition Width="*" />
+                    <!-- Кнопка перехода к оформлению -->
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Сводка выбранных мест и сумма -->
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding SelectedSeatsSummary}"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               Margin="0,0,0,4" />
+                    <TextBlock Text="{Binding TotalPrice, StringFormat='Итоговая сумма: {0:N0} ₽'}"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource PrimaryDarkBrush}" />
+
+                    <!-- Уведомление или сообщение об ошибке -->
+                    <TextBlock Text="{Binding StatusMessage}"
+                               FontSize="13"
+                               FontWeight="Medium"
+                               Foreground="#C62828"
+                               Margin="0,6,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </Trigger>
+                                    <Trigger Property="Text" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Кнопка подтверждения и перехода к оформлению -->
+                <Button Grid.Column="1"
+                        Style="{StaticResource PrimaryButtonStyle}"
+                        Command="{Binding HoldSelectedSeatsCommand}"
+                        IsEnabled="{Binding CanProceed}"
+                        Padding="24,14"
+                        FontSize="15"
+                        VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Перейти к оформлению (W-05) →" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

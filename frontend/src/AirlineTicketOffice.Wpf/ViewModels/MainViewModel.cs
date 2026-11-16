@@ -1,9 +1,11 @@
 using System;
 using System.Windows;
+using Microsoft.Extensions.DependencyInjection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using AirlineTicketOffice.Core.Contracts.Clock;
 using AirlineTicketOffice.Core.Contracts.Clock.Events;
+using AirlineTicketOffice.Core.Contracts.Flights;
 using AirlineTicketOffice.Core.Contracts.Session;
 using AirlineTicketOffice.Core.Domain.Enums;
 using AirlineTicketOffice.Wpf.Services;
@@ -20,6 +22,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly ISessionService _sessionService;
     private readonly IVirtualClockService _clockService;
     private readonly INavigationService _navigationService;
+    private readonly IServiceProvider _serviceProvider;
+
+    private FlightSearchViewModel? _flightSearchViewModel;
 
     [ObservableProperty]
     private string _currentTimeDisplay = string.Empty;
@@ -45,14 +50,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// <param name="sessionService">Сервис управления сессиями.</param>
     /// <param name="clockService">Сервис виртуального времени.</param>
     /// <param name="navigationService">Сервис навигации.</param>
+    /// <param name="serviceProvider">Провайдер служб для разрешения представлений.</param>
     public MainViewModel(
         ISessionService sessionService,
         IVirtualClockService clockService,
-        INavigationService navigationService)
+        INavigationService navigationService,
+        IServiceProvider serviceProvider)
     {
         _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
         _clockService = clockService ?? throw new ArgumentNullException(nameof(clockService));
         _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
         // Инициализируем отображение текущего времени и режима
         UpdateClockDisplay(_clockService.CurrentVirtualTime, _clockService.Mode);
@@ -212,14 +220,24 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void NavigateToFlightSearch()
     {
-        CurrentView = new PlaceholderViewModel
+        if (_flightSearchViewModel == null)
         {
-            Title = "Поиск рейсов и бронирование",
-            WindowCode = "W-03",
-            PlannedIncrement = "Инкремент 35",
-            Icon = "✈",
-            Description = "Поиск доступных рейсов по направлениям и датам, выбор класса обслуживания (Эконом/Бизнес) и интерактивный выбор мест на схеме салона (W-04)."
-        };
+            _flightSearchViewModel = _serviceProvider.GetRequiredService<FlightSearchViewModel>();
+            _flightSearchViewModel.FlightSelected += OnFlightSelected;
+        }
+
+        CurrentView = _flightSearchViewModel;
+    }
+
+    /// <summary>
+    /// Обработчик выбора рейса: переходит к интерактивной схеме мест W-04.
+    /// </summary>
+    private void OnFlightSelected(FlightListItemDto flight, int passengersCount)
+    {
+        var seatMapVm = _serviceProvider.GetRequiredService<SeatMapViewModel>();
+        seatMapVm.Initialize(flight, passengersCount);
+        seatMapVm.BackRequested += () => CurrentView = _flightSearchViewModel;
+        CurrentView = seatMapVm;
     }
 
     /// <summary>
@@ -356,6 +374,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _clockService.TimeChanged -= OnVirtualTimeChanged;
+
+        if (_flightSearchViewModel != null)
+        {
+            _flightSearchViewModel.FlightSelected -= OnFlightSelected;
+        }
+
         GC.SuppressFinalize(this);
     }
 }

@@ -35,10 +35,14 @@ public partial class App : Application
         // 3. Регистрация моделей представления (ViewModels)
         services.AddTransient<RoleSelectionViewModel>();
         services.AddTransient<MainViewModel>();
+        services.AddTransient<FlightSearchViewModel>();
+        services.AddTransient<SeatMapViewModel>();
 
         // 4. Регистрация окон и представлений (Views)
         services.AddTransient<RoleSelectionWindow>();
         services.AddTransient<MainWindow>();
+        services.AddTransient<FlightSearchView>();
+        services.AddTransient<SeatMapView>();
 
         // Формирование провайдера сервисов
         Services = services.BuildServiceProvider();

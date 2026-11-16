@@ -1,6 +1,8 @@
 <Application x:Class="AirlineTicketOffice.Wpf.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:AirlineTicketOffice.Wpf.Views"
+             xmlns:vm="clr-namespace:AirlineTicketOffice.Wpf.ViewModels">
     <Application.Resources>
         <!-- Базовая палитра цветов Modern UI -->
         <Color x:Key="PrimaryColor">#1E88E5</Color>
@@ -34,6 +36,14 @@
 
         <!-- Конвертеры данных -->
         <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+
+        <!-- Автоматические шаблоны привязки моделей представления к XAML-представлениям -->
+        <DataTemplate DataType="{x:Type vm:FlightSearchViewModel}">
+            <views:FlightSearchView />
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SeatMapViewModel}">
+            <views:SeatMapView />
+        </DataTemplate>
 
         <!-- Базовый стиль TextBlock -->
         <Style TargetType="TextBlock">
