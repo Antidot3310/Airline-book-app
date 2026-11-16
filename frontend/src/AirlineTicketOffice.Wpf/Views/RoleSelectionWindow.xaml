@@ -1,0 +1,261 @@
+<Window x:Class="AirlineTicketOffice.Wpf.Views.RoleSelectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:AirlineTicketOffice.Wpf.ViewModels"
+        mc:Ignorable="d"
+        Title="Авиакасса — Выбор роли"
+        Width="860" Height="620"
+        MinWidth="760" MinHeight="540"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource BackgroundBrush}">
+
+    <Grid Margin="32">
+        <Grid.RowDefinitions>
+            <!-- Шапка окна -->
+            <RowDefinition Height="Auto" />
+            <!-- Карточки ролей -->
+            <RowDefinition Height="*" />
+            <!-- Подвал и служебный пульт -->
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок системы -->
+        <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,32">
+            <TextBlock Text="АВИАКАССА"
+                       FontSize="34"
+                       FontWeight="ExtraBold"
+                       Foreground="{StaticResource PrimaryDarkBrush}"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="Автоматизированная система бронирования и оформления авиабилетов"
+                       FontSize="15"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       HorizontalAlignment="Center"
+                       Margin="0,6,0,0" />
+            <Border Background="{StaticResource PrimaryLightBrush}"
+                    CornerRadius="14"
+                    Padding="14,6"
+                    HorizontalAlignment="Center"
+                    Margin="0,16,0,0">
+                <TextBlock Text="Выберите роль для начала работы с системой"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource PrimaryDarkBrush}" />
+            </Border>
+        </StackPanel>
+
+        <!-- 3 интерактивные карточки выбора роли -->
+        <Grid Grid.Row="1" VerticalAlignment="Center" Margin="0,0,0,24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="20" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="20" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- 1. Карточка Пассажира -->
+            <Button Grid.Column="0"
+                    Style="{StaticResource RoleCardButtonStyle}"
+                    Command="{Binding SelectRoleCommand}"
+                    CommandParameter="Passenger">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Иконка / значок -->
+                    <Border Grid.Row="0"
+                            Width="56" Height="56"
+                            CornerRadius="28"
+                            Background="{StaticResource PrimaryLightBrush}"
+                            HorizontalAlignment="Center"
+                            Margin="0,0,0,16">
+                        <TextBlock Text="✈"
+                                   FontSize="24"
+                                   Foreground="{StaticResource PrimaryBrush}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
+
+                    <!-- Заголовок роли -->
+                    <TextBlock Grid.Row="1"
+                               Text="Пассажир"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource PrimaryDarkBrush}"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8" />
+
+                    <!-- Описание -->
+                    <TextBlock Grid.Row="2"
+                               Text="Поиск рейсов, онлайн-бронирование, мои билеты"
+                               FontSize="13"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               LineHeight="18"
+                               Margin="0,0,0,16" />
+
+                    <!-- Кнопка действия -->
+                    <Border Grid.Row="3"
+                            Background="{StaticResource PrimaryBrush}"
+                            CornerRadius="6"
+                            Padding="12,8">
+                        <TextBlock Text="Войти как Пассажир →"
+                                   Foreground="White"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"
+                                   HorizontalAlignment="Center" />
+                    </Border>
+                </Grid>
+            </Button>
+
+            <!-- 2. Карточка Кассира -->
+            <Button Grid.Column="2"
+                    Style="{StaticResource RoleCardButtonStyle}"
+                    Command="{Binding SelectRoleCommand}"
+                    CommandParameter="Cashier">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Иконка / значок -->
+                    <Border Grid.Row="0"
+                            Width="56" Height="56"
+                            CornerRadius="28"
+                            Background="#E8F5E9"
+                            HorizontalAlignment="Center"
+                            Margin="0,0,0,16">
+                        <TextBlock Text="💳"
+                                   FontSize="24"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
+
+                    <!-- Заголовок роли -->
+                    <TextBlock Grid.Row="1"
+                               Text="Кассир"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource PrimaryDarkBrush}"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8" />
+
+                    <!-- Описание -->
+                    <TextBlock Grid.Row="2"
+                               Text="Оформление билетов в кассе, приём наличных/карт, возвраты"
+                               FontSize="13"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               LineHeight="18"
+                               Margin="0,0,0,16" />
+
+                    <!-- Кнопка действия -->
+                    <Border Grid.Row="3"
+                            Background="{StaticResource PrimaryBrush}"
+                            CornerRadius="6"
+                            Padding="12,8">
+                        <TextBlock Text="Войти как Кассир →"
+                                   Foreground="White"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"
+                                   HorizontalAlignment="Center" />
+                    </Border>
+                </Grid>
+            </Button>
+
+            <!-- 3. Карточка Администратора -->
+            <Button Grid.Column="4"
+                    Style="{StaticResource RoleCardButtonStyle}"
+                    Command="{Binding SelectRoleCommand}"
+                    CommandParameter="Administrator">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Иконка / значок -->
+                    <Border Grid.Row="0"
+                            Width="56" Height="56"
+                            CornerRadius="28"
+                            Background="#FFF3E0"
+                            HorizontalAlignment="Center"
+                            Margin="0,0,0,16">
+                        <TextBlock Text="⚙"
+                                   FontSize="24"
+                                   Foreground="{StaticResource AccentDarkBrush}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
+
+                    <!-- Заголовок роли -->
+                    <TextBlock Grid.Row="1"
+                               Text="Администратор"
+                               FontSize="20"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource PrimaryDarkBrush}"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8" />
+
+                    <!-- Описание -->
+                    <TextBlock Grid.Row="2"
+                               Text="Управление рейсами, тарифами, справочниками, отчёты и аудит"
+                               FontSize="13"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               LineHeight="18"
+                               Margin="0,0,0,16" />
+
+                    <!-- Кнопка действия -->
+                    <Border Grid.Row="3"
+                            Background="{StaticResource PrimaryBrush}"
+                            CornerRadius="6"
+                            Padding="12,8">
+                        <TextBlock Text="Войти как Администратор →"
+                                   Foreground="White"
+                                   FontWeight="SemiBold"
+                                   FontSize="13"
+                                   HorizontalAlignment="Center" />
+                    </Border>
+                </Grid>
+            </Button>
+        </Grid>
+
+        <!-- Подвал: разделитель и служебный пульт -->
+        <Border Grid.Row="2"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{StaticResource SurfaceBorderBrush}"
+                Padding="0,16,0,0">
+            <Grid>
+                <TextBlock Text="© 2026 Авиакасса • Модуль ядра M1–M15 подключен"
+                           FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           VerticalAlignment="Center" />
+
+                <!-- Служебный пульт (Эмулятор W-16) -->
+                <Button HorizontalAlignment="Right"
+                        Style="{StaticResource OutlineButtonStyle}"
+                        Command="{Binding OpenEmulatorCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="⚡" Margin="0,0,6,0" />
+                        <TextBlock Text="Служебный пульт (Эмулятор W-16)" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
