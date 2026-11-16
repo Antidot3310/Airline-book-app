@@ -16,6 +16,11 @@ public enum SeatState
     Held,
 
     /// <summary>
+    /// Забронировано (псевдоним для статуса Held).
+    /// </summary>
+    Booked = Held,
+
+    /// <summary>
     /// Продано (оплачено).
     /// </summary>
     Sold,

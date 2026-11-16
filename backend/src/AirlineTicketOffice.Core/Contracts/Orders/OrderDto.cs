@@ -50,6 +50,11 @@ public class OrderDto
     public DateTime HoldExpiresAt { get; set; }
 
     /// <summary>
+    /// Дата и время истечения удержания мест (псевдоним для совместимости).
+    /// </summary>
+    public DateTime ExpiresAt => HoldExpiresAt;
+
+    /// <summary>
     /// Список билетов, оформленных в рамках данного заказа.
     /// </summary>
     public IReadOnlyList<TicketDto> Tickets { get; set; } = [];

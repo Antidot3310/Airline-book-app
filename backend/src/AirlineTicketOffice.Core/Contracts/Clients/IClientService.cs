@@ -29,4 +29,20 @@ public interface IClientService
     /// <param name="client">DTO с данными пассажира.</param>
     /// <returns>Результат операции с сохранённым <see cref="ClientDto"/> или сообщением об ошибке.</returns>
     Result<ClientDto> CreateOrUpdateClient(ClientDto client);
+
+    /// <summary>
+    /// Возвращает существующего клиента по номеру документа или регистрирует нового, если клиент не найден.
+    /// </summary>
+    /// <param name="firstName">Имя пассажира.</param>
+    /// <param name="lastName">Фамилия пассажира.</param>
+    /// <param name="documentNumber">Номер документа (паспорта).</param>
+    /// <param name="email">Контактный email.</param>
+    /// <param name="phone">Контактный телефон.</param>
+    /// <returns>Результат с карточкой пассажира <see cref="ClientDto"/>.</returns>
+    Result<ClientDto> GetOrCreateClient(
+        string firstName,
+        string lastName,
+        string documentNumber,
+        string email,
+        string phone);
 }

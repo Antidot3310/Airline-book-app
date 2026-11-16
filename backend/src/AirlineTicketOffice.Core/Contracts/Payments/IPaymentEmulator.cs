@@ -20,6 +20,18 @@ public interface IPaymentEmulator
     int DelayMilliseconds { get; set; }
 
     /// <summary>
+    /// Устанавливает режим обработки входящих платёжных запросов.
+    /// </summary>
+    /// <param name="mode">Режим обработки.</param>
+    void SetResponseMode(PaymentEmulatorMode mode);
+
+    /// <summary>
+    /// Устанавливает режим ответа платёжного шлюза.
+    /// </summary>
+    /// <param name="mode">Режим ответа.</param>
+    void SetResponseMode(GatewayResponseMode mode);
+
+    /// <summary>
     /// Обрабатывает запрос на оплату заказа банковской картой в соответствии с текущим режимом <see cref="Mode"/>.
     /// </summary>
     /// <param name="orderId">Идентификатор оплачиваемого заказа.</param>

@@ -175,4 +175,28 @@ public class ClientService : IClientService
             return Result<ClientDto>.Success(resultDto);
         }
     }
+
+    /// <inheritdoc />
+    public Result<ClientDto> GetOrCreateClient(
+        string firstName,
+        string lastName,
+        string documentNumber,
+        string email,
+        string phone)
+    {
+        var existing = FindByDocument(documentNumber);
+        if (existing.IsSuccess)
+        {
+            return existing;
+        }
+
+        string fullName = $"{firstName} {lastName}".Trim();
+        return CreateOrUpdateClient(new ClientDto
+        {
+            FullName = fullName,
+            DocumentNumber = documentNumber,
+            ContactEmail = email,
+            ContactPhone = phone
+        });
+    }
 }

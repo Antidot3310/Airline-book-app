@@ -1,3 +1,4 @@
+using AirlineTicketOffice.Core.Contracts.Common;
 using AirlineTicketOffice.Core.Domain.Enums;
 
 namespace AirlineTicketOffice.Core.Contracts.Session;
@@ -23,6 +24,15 @@ public interface ISessionService
     /// </summary>
     /// <param name="role">Роль пользователя, для которой открывается сеанс.</param>
     void OpenSession(UserRole role);
+
+    /// <summary>
+    /// Открывает сеанс с заданной ролью и данными пользователя, фиксируя действие в журнале аудита.
+    /// </summary>
+    /// <param name="role">Роль пользователя, для которой открывается сеанс.</param>
+    /// <param name="userName">Имя пользователя.</param>
+    /// <param name="userEmail">Адрес электронной почты пользователя.</param>
+    /// <returns>Результат выполнения операции <see cref="Result"/>.</returns>
+    Result OpenSession(UserRole role, string? userName, string? userEmail);
 
     /// <summary>
     /// Закрывает текущий активный сеанс и фиксирует действие в журнале аудита.

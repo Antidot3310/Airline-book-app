@@ -36,6 +36,20 @@ public class ChannelSalesReportDto
     /// Детализированные строки продаж по каналам.
     /// </summary>
     public IReadOnlyList<ChannelSalesItemDto> Items { get; set; } = [];
+
+    /// <summary>
+    /// Количество проданных билетов через онлайн-самообслуживание.
+    /// </summary>
+    public int SelfServiceTicketsCount => System.Linq.Enumerable.Sum(
+        System.Linq.Enumerable.Where(Items, i => i.Channel == Domain.Enums.OrderChannel.SelfService),
+        i => i.TicketsCount);
+
+    /// <summary>
+    /// Количество проданных билетов через кассу.
+    /// </summary>
+    public int CashierTicketsCount => System.Linq.Enumerable.Sum(
+        System.Linq.Enumerable.Where(Items, i => i.Channel == Domain.Enums.OrderChannel.Cashier),
+        i => i.TicketsCount);
 }
 
 /// <summary>

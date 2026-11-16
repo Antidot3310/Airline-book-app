@@ -69,6 +69,18 @@ public class PaymentEmulator : IPaymentEmulator
     public int DelayMilliseconds { get; set; } = 0;
 
     /// <inheritdoc />
+    public void SetResponseMode(PaymentEmulatorMode mode)
+    {
+        Mode = mode;
+    }
+
+    /// <inheritdoc />
+    public void SetResponseMode(GatewayResponseMode mode)
+    {
+        Mode = (PaymentEmulatorMode)mode;
+    }
+
+    /// <inheritdoc />
     public EmulatorTransactionResult ProcessPayment(int orderId, decimal amount, CardDetailsDto card)
     {
         int delayMs = DelayMilliseconds;
