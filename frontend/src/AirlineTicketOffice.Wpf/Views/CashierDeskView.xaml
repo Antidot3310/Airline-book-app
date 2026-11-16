@@ -441,7 +441,7 @@
                             </Grid>
                         </Border>
 
-                        <!-- Принято наличными -->
+                        <!-- Продажи через кассу -->
                         <Border Background="{StaticResource BackgroundBrush}"
                                 CornerRadius="8"
                                 Padding="14,10"
@@ -451,12 +451,12 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Наличные (касса)" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="{Binding CashTotal, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" FontSize="15" Foreground="{StaticResource TextPrimaryBrush}" />
+                                <TextBlock Grid.Column="0" Text="Продажи через кассу" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding CashierSalesTotal, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" FontSize="15" Foreground="{StaticResource TextPrimaryBrush}" />
                             </Grid>
                         </Border>
 
-                        <!-- Принято картами -->
+                        <!-- Продажи через самообслуживание -->
                         <Border Background="{StaticResource BackgroundBrush}"
                                 CornerRadius="8"
                                 Padding="14,10"
@@ -466,8 +466,8 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Банковские карты" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="{Binding CardTotal, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" FontSize="15" Foreground="{StaticResource TextPrimaryBrush}" />
+                                <TextBlock Grid.Column="0" Text="Самообслуживание" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="1" Text="{Binding SelfServiceSalesTotal, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" FontSize="15" Foreground="{StaticResource TextPrimaryBrush}" />
                             </Grid>
                         </Border>
 
@@ -482,7 +482,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="Возвраты (выплаты)" FontSize="12" Foreground="{StaticResource DangerBrush}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="{Binding RefundsTotal, StringFormat='-{}{0:N0} ₽'}" FontWeight="Bold" FontSize="15" Foreground="{StaticResource DangerBrush}" />
+                                <TextBlock Grid.Column="1" Text="{Binding RefundsTotal, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" FontSize="15" Foreground="{StaticResource DangerBrush}" />
                             </Grid>
                         </Border>
 

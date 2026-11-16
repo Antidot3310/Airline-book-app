@@ -2,7 +2,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
-using Microsoft.Extensions.DependencyInjection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using AirlineTicketOffice.Core.Contracts.Clients;
@@ -10,9 +9,8 @@ using AirlineTicketOffice.Core.Contracts.Clock;
 using AirlineTicketOffice.Core.Contracts.Clock.Events;
 using AirlineTicketOffice.Core.Contracts.Common;
 using AirlineTicketOffice.Core.Contracts.Orders;
-using AirlineTicketOffice.Core.Contracts.Refunds;
+using AirlineTicketOffice.Core.Contracts.Reports;
 using AirlineTicketOffice.Core.Contracts.Session;
-using AirlineTicketOffice.Core.Data;
 using AirlineTicketOffice.Core.Domain.Enums;
 using AirlineTicketOffice.Wpf.Services;
 
@@ -31,7 +29,7 @@ public partial class CashierDeskViewModel : ObservableObject, IDisposable
     private readonly ISessionService _sessionService;
     private readonly IVirtualClockService _clockService;
     private readonly INavigationService _navigationService;
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IReportService _reportService;
 
     #region Левая панель: Клиенты и пассажиры
 
@@ -77,18 +75,18 @@ public partial class CashierDeskViewModel : ObservableObject, IDisposable
     private int _ticketsSoldCount;
 
     [ObservableProperty]
-    private decimal _cashTotal;
+    private decimal _cashierSalesTotal;
 
     [ObservableProperty]
-    private decimal _cardTotal;
+    private decimal _selfServiceSalesTotal;
 
     [ObservableProperty]
     private decimal _refundsTotal;
 
     /// <summary>
-    /// Итоговая чистая выручка кассы за смену (наличные + безналичные - возвраты).
+    /// Итоговая чистая выручка за смену: продажи через кассу и самообслуживание минус возвраты.
     /// </summary>
-    public decimal NetRevenue => (CashTotal + CardTotal) - RefundsTotal;
+    public decimal NetRevenue => (CashierSalesTotal + SelfServiceSalesTotal) - RefundsTotal;
 
     #endregion
 
@@ -116,14 +114,14 @@ public partial class CashierDeskViewModel : ObservableObject, IDisposable
         ISessionService sessionService,
         IVirtualClockService clockService,
         INavigationService navigationService,
-        IServiceScopeFactory scopeFactory)
+        IReportService reportService)
     {
         _clientService = clientService ?? throw new ArgumentNullException(nameof(clientService));
         _orderTicketService = orderTicketService ?? throw new ArgumentNullException(nameof(orderTicketService));
         _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
         _clockService = clockService ?? throw new ArgumentNullException(nameof(clockService));
         _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
-        _scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
+        _reportService = reportService ?? throw new ArgumentNullException(nameof(reportService));
 
         // Подписываемся на виртуальное время для автоматического пересчёта смены
         _clockService.TimeChanged += OnVirtualTimeChanged;
@@ -331,28 +329,22 @@ public partial class CashierDeskViewModel : ObservableObject, IDisposable
         try
         {
             DateTime shiftStart = _clockService.CurrentVirtualTime.Date;
-            DateTime shiftEnd = shiftStart.AddDays(1);
+            DateTime periodEnd = shiftStart.AddDays(1).AddTicks(-1);
 
-            using IServiceScope scope = _scopeFactory.CreateScope();
-            AirlineDbContext db = scope.ServiceProvider.GetRequiredService<AirlineDbContext>();
+            // Существующие контракты Core не предоставляют разбивку платежей по способу оплаты,
+            // поэтому сводка строится по отчёту M10 в разрезе каналов продаж.
+            ChannelSalesReportDto salesReport = _reportService.GetSalesByChannelsReport(shiftStart, periodEnd);
+            RefundStatisticsReportDto refundsReport = _reportService.GetRefundsStatisticsReport(shiftStart, periodEnd);
 
-            TicketsSoldCount = db.Tickets
-                .Count(t => (t.Status == TicketStatus.Paid || t.Status == TicketStatus.Used || t.Status == TicketStatus.Refunded)
-                            && t.Order != null && t.Order.CreatedAt >= shiftStart && t.Order.CreatedAt < shiftEnd);
+            ChannelSalesItemDto? cashierSales = salesReport.Items
+                .FirstOrDefault(item => item.Channel == OrderChannel.Cashier);
+            ChannelSalesItemDto? selfServiceSales = salesReport.Items
+                .FirstOrDefault(item => item.Channel == OrderChannel.SelfService);
 
-            CashTotal = db.Payments
-                .Where(p => p.Status == PaymentStatus.Success && p.PaymentMethod == PaymentMethod.Cash
-                            && p.CreatedAt >= shiftStart && p.CreatedAt < shiftEnd)
-                .Sum(p => (decimal?)p.Amount) ?? 0m;
-
-            CardTotal = db.Payments
-                .Where(p => p.Status == PaymentStatus.Success && p.PaymentMethod == PaymentMethod.Card
-                            && p.CreatedAt >= shiftStart && p.CreatedAt < shiftEnd)
-                .Sum(p => (decimal?)p.Amount) ?? 0m;
-
-            RefundsTotal = db.Refunds
-                .Where(r => r.CreatedAt >= shiftStart && r.CreatedAt < shiftEnd)
-                .Sum(r => (decimal?)r.Amount) ?? 0m;
+            TicketsSoldCount = salesReport.TotalTickets;
+            CashierSalesTotal = cashierSales?.TotalSalesAmount ?? 0m;
+            SelfServiceSalesTotal = selfServiceSales?.TotalSalesAmount ?? 0m;
+            RefundsTotal = refundsReport.TotalRefundAmount;
 
             OnPropertyChanged(nameof(NetRevenue));
             LoadRecentOrders();
