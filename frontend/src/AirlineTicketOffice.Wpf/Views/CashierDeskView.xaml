@@ -5,7 +5,6 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:AirlineTicketOffice.Wpf.ViewModels"
              xmlns:clients="clr-namespace:AirlineTicketOffice.Core.Contracts.Clients;assembly=AirlineTicketOffice.Core"
-             xmlns:orders="clr-namespace:AirlineTicketOffice.Core.Contracts.Orders;assembly=AirlineTicketOffice.Core"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:CashierDeskViewModel}">
 
@@ -158,13 +157,22 @@
                                            FontSize="13"
                                            Foreground="{StaticResource PrimaryDarkBrush}"
                                            VerticalAlignment="Center" />
-                                <Button Grid.Column="1"
-                                        Style="{StaticResource OutlineButtonStyle}"
-                                        Command="{Binding StartNewClientCommand}"
-                                        Padding="8,4"
-                                        FontSize="11">
-                                    <TextBlock Text="➕ Новый" />
-                                </Button>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button Style="{StaticResource OutlineButtonStyle}"
+                                            Command="{Binding CancelEditClientCommand}"
+                                            Padding="8,4"
+                                            FontSize="11"
+                                            Margin="0,0,6,0"
+                                            Visibility="{Binding IsCreatingClient, Converter={StaticResource BoolToVisConverter}}">
+                                        <TextBlock Text="✖ Отмена" />
+                                    </Button>
+                                    <Button Style="{StaticResource OutlineButtonStyle}"
+                                            Command="{Binding StartNewClientCommand}"
+                                            Padding="8,4"
+                                            FontSize="11">
+                                        <TextBlock Text="➕ Новый" />
+                                    </Button>
+                                </StackPanel>
                             </Grid>
 
                             <!-- ФИО -->
@@ -202,6 +210,7 @@
                             <!-- Кнопка сохранения -->
                             <Button Style="{StaticResource PrimaryButtonStyle}"
                                     Command="{Binding SaveClientCommand}"
+                                    IsEnabled="{Binding CanManageClients}"
                                     Height="36">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="💾  " />
@@ -264,6 +273,7 @@
                             <Button Grid.Column="2"
                                     Style="{StaticResource AccentButtonStyle}"
                                     Command="{Binding OpenRefundByNumberCommand}"
+                                    IsEnabled="{Binding CanRefundTickets}"
                                     Height="38"
                                     Padding="18,0">
                                 <StackPanel Orientation="Horizontal">
@@ -318,6 +328,7 @@
                         <Button Grid.Column="1"
                                 Style="{StaticResource PrimaryButtonStyle}"
                                 Command="{Binding StartNewSaleCommand}"
+                                IsEnabled="{Binding CanCreateBooking}"
                                 Height="42"
                                 Padding="20,0"
                                 VerticalAlignment="Center">
@@ -349,10 +360,11 @@
                                    Foreground="{StaticResource PrimaryDarkBrush}"
                                    Margin="0,0,0,12" />
 
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <Grid Grid.Row="1">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <ItemsControl ItemsSource="{Binding RecentOrders}">
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type orders:OrderDto}">
+                                    <DataTemplate DataType="{x:Type vm:CashierOrderRowViewModel}">
                                         <Border Background="{StaticResource BackgroundBrush}"
                                                 BorderBrush="{StaticResource SurfaceBorderBrush}"
                                                 BorderThickness="1"
@@ -371,10 +383,28 @@
                                                         <TextBlock Text="{Binding CreatedAt, StringFormat=' • {0:dd.MM.yyyy HH:mm}'}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" />
                                                     </StackPanel>
 
-                                                    <TextBlock Text="{Binding Tickets.Count, StringFormat='Билетов в заказе: {0}'}"
+                                                    <TextBlock Text="{Binding TicketsCount, StringFormat='Билетов в заказе: {0}'}"
                                                                FontSize="12"
                                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                                Margin="0,3,0,0" />
+
+                                                    <!-- Срок удержания мест: каноническое свойство OrderDto.HoldExpiresAt -->
+                                                    <TextBlock Text="{Binding HoldText}" FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{StaticResource AccentDarkBrush}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HoldText}" Value="">
+                                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding IsHoldExpired}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                 </StackPanel>
 
                                                 <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
@@ -383,10 +413,12 @@
                                                                FontSize="15"
                                                                Foreground="{StaticResource PrimaryDarkBrush}"
                                                                HorizontalAlignment="Right" />
-                                                    <TextBlock Text="{Binding Status}"
+                                                    <TextBlock Text="{Binding StatusAndChannelText}"
                                                                FontSize="11"
                                                                Foreground="{StaticResource TextSecondaryBrush}"
-                                                               HorizontalAlignment="Right" />
+                                                               HorizontalAlignment="Right"
+                                                               TextWrapping="Wrap"
+                                                               MaxWidth="150" />
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
@@ -394,6 +426,28 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
+
+                            <!-- Пустое состояние списка заказов -->
+                            <TextBlock Text="Заказов за текущую смену пока нет. Оформите продажу или обновите итоги смены."
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"
+                                       Margin="24">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding RecentOrders.Count}" Value="0">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
                     </Grid>
                 </Border>
             </Grid>
@@ -415,13 +469,36 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,16">
-                        <TextBlock Text="📊  " FontSize="18" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
-                        <TextBlock Text="Итоги смены"
-                                   FontSize="15"
-                                   FontWeight="Bold"
-                                   Foreground="{StaticResource PrimaryDarkBrush}"
-                                   VerticalAlignment="Center" />
+                    <StackPanel Grid.Row="0" Margin="0,0,0,16">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📊  " FontSize="18" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="Итоги смены"
+                                       FontSize="15"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource PrimaryDarkBrush}"
+                                       VerticalAlignment="Center" />
+                            <Border Background="{StaticResource PrimaryLightBrush}"
+                                    CornerRadius="6"
+                                    Padding="6,2"
+                                    Margin="8,0,0,0"
+                                    VerticalAlignment="Center">
+                                <TextBlock Text="{Binding CurrentRoleTitle}"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource PrimaryDarkBrush}" />
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Активные удержания мест по каноническому OrderDto.HoldExpiresAt -->
+                        <TextBlock Text="{Binding NearestHoldText}"
+                                   FontSize="11"
+                                   Foreground="{StaticResource AccentDarkBrush}"
+                                   Margin="0,8,0,0"
+                                   TextWrapping="Wrap" />
+                        <TextBlock FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0">
+                            <Run Text="Неоплаченных заказов в сессии: " />
+                            <Run Text="{Binding PendingOrdersCount, Mode=OneWay}" FontWeight="Bold" />
+                        </TextBlock>
                     </StackPanel>
 
                     <!-- Карточки показателей смены -->
@@ -431,14 +508,20 @@
                                 CornerRadius="8"
                                 Padding="14,10"
                                 Margin="0,0,0,10">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Билетов продано" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Column="1" Text="{Binding TicketsSoldCount}" FontWeight="Bold" FontSize="16" Foreground="{StaticResource TextPrimaryBrush}" />
-                            </Grid>
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Билетов продано" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Text="{Binding TicketsSoldCount}" FontWeight="Bold" FontSize="16" Foreground="{StaticResource TextPrimaryBrush}" />
+                                </Grid>
+                                <TextBlock Text="{Binding CashierTicketsSoldCount, StringFormat='из них через кассу: {0}'}"
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Margin="0,3,0,0" />
+                            </StackPanel>
                         </Border>
 
                         <!-- Продажи через кассу -->
