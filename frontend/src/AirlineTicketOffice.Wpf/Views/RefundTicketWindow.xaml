@@ -214,6 +214,10 @@
                                        FontSize="15"
                                        FontWeight="Bold"
                                        Foreground="{StaticResource DangerBrush}" />
+                            <TextBlock Text="{Binding PenaltyPercentText, StringFormat='Удержано {0} стоимости'}"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Margin="0,2,0,0" />
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -273,6 +277,34 @@
                 </StackPanel>
             </Border>
 
+            <!-- Баннер отсутствия прав на оформление возврата -->
+            <Border Background="#FFF3E0"
+                    BorderBrush="{StaticResource AccentDarkBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="12,8"
+                    Margin="0,0,0,8">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasRefundPermission}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="⛔  " FontSize="14" VerticalAlignment="Center" />
+                    <TextBlock Text="Текущая роль не имеет права на оформление возврата (RefundTicket). Подтверждение заблокировано."
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Foreground="#E65100"
+                               VerticalAlignment="Center"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
             <!-- Баннер ошибки -->
             <Border Background="#FFEBEE"
                     BorderBrush="{StaticResource DangerBrush}"
@@ -318,7 +350,7 @@
                 <Button Grid.Column="0"
                         Style="{StaticResource AccentButtonStyle}"
                         Command="{Binding ConfirmRefundCommand}"
-                        IsEnabled="{Binding IsRefundAllowed}"
+                        IsEnabled="{Binding CanConfirmRefund}"
                         Padding="20,10"
                         HorizontalAlignment="Left">
                     <StackPanel Orientation="Horizontal">

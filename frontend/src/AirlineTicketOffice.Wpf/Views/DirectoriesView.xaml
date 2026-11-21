@@ -55,6 +55,15 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+
+        <Style x:Key="TabTariffsStyle" TargetType="Button" BasedOn="{StaticResource TabButtonStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsTabTariffs}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                    <Setter Property="Foreground" Value="White" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -161,7 +170,12 @@
                 <Button Content="Типы воздушных судов"
                         Style="{StaticResource TabAircraftTypesStyle}"
                         Command="{Binding SelectTabCommand}"
-                        CommandParameter="2" />
+                        CommandParameter="2"
+                        Margin="0,0,4,0" />
+                <Button Content="Тарифы и классы"
+                        Style="{StaticResource TabTariffsStyle}"
+                        Command="{Binding SelectTabCommand}"
+                        CommandParameter="3" />
             </StackPanel>
         </Border>
 
@@ -275,7 +289,8 @@
                         BorderBrush="{StaticResource SurfaceBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="10"
-                        Padding="20">
+                        Padding="20"
+                        Visibility="{Binding CanManageDirectories, Converter={StaticResource BoolToVisConverter}}">
                     <StackPanel>
                         <TextBlock Text="Добавить новый аэропорт"
                                    FontWeight="Bold"
@@ -340,12 +355,53 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0"
-                               Text="Флот воздушных судов авиакомпании"
-                               FontWeight="Bold"
-                               FontSize="15"
-                               Foreground="{StaticResource PrimaryDarkBrush}"
-                               Margin="0,0,0,12" />
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="Флот воздушных судов авиакомпании"
+                                       FontWeight="Bold"
+                                       FontSize="15"
+                                       Foreground="{StaticResource PrimaryDarkBrush}" />
+                            <TextBlock Text="Борт на техобслуживании нельзя назначить на рейс (W-12)."
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Margin="0,2,0,0" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Visibility="{Binding CanManageDirectories, Converter={StaticResource BoolToVisConverter}}">
+                            <TextBox Text="{Binding NewAircraftTailNumber, UpdateSourceTrigger=PropertyChanged}"
+                                     Width="150"
+                                     Height="34"
+                                     Padding="8,6"
+                                     FontSize="12"
+                                     ToolTip="Бортовой номер (например, RA-89014)"
+                                     Margin="0,0,8,0" />
+                            <ComboBox ItemsSource="{Binding AircraftTypes}"
+                                      SelectedItem="{Binding NewAircraftType}"
+                                      DisplayMemberPath="Name"
+                                      Width="210"
+                                      Height="34"
+                                      FontSize="12"
+                                      ToolTip="Тип воздушного судна"
+                                      Margin="0,0,8,0" />
+                            <Button Style="{StaticResource PrimaryButtonStyle}"
+                                    Command="{Binding AddAircraftCommand}"
+                                    Height="34"
+                                    Padding="12,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="➕  " />
+                                    <TextBlock Text="Добавить борт" FontSize="12" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
 
                     <DataGrid Grid.Row="1"
                               ItemsSource="{Binding AircraftList}"
@@ -440,12 +496,80 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0"
-                               Text="Справочник моделей и компоновок типов воздушных судов"
-                               FontWeight="Bold"
-                               FontSize="15"
-                               Foreground="{StaticResource PrimaryDarkBrush}"
-                               Margin="0,0,0,12" />
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="Справочник моделей и компоновок типов воздушных судов"
+                                       FontWeight="Bold"
+                                       FontSize="15"
+                                       Foreground="{StaticResource PrimaryDarkBrush}" />
+                            <TextBlock Text="Пассажировместимость рассчитывается по схеме рядов: бизнес 2+2 (4 места), эконом 3+3 (6 мест)."
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Margin="0,2,0,0" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Bottom"
+                                    Visibility="{Binding CanManageDirectories, Converter={StaticResource BoolToVisConverter}}">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="Модель ВС" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                                <TextBox Text="{Binding NewAircraftTypeName, UpdateSourceTrigger=PropertyChanged}"
+                                         Width="210"
+                                         Height="30"
+                                         Padding="8,4"
+                                         FontSize="12"
+                                         ToolTip="Например, Airbus A320-200" />
+                            </StackPanel>
+
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="Рядов бизнес" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                                <TextBox Text="{Binding NewAircraftTypeBusinessRows, UpdateSourceTrigger=PropertyChanged}"
+                                         Width="70"
+                                         Height="30"
+                                         Padding="8,4"
+                                         FontSize="12"
+                                         ToolTip="Количество рядов бизнес-класса (4 кресла в ряду)" />
+                            </StackPanel>
+
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="Рядов эконом" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
+                                <TextBox Text="{Binding NewAircraftTypeEconomyRows, UpdateSourceTrigger=PropertyChanged}"
+                                         Width="70"
+                                         Height="30"
+                                         Padding="8,4"
+                                         FontSize="12"
+                                         ToolTip="Количество рядов эконом-класса (6 кресел в ряду)" />
+                            </StackPanel>
+
+                            <Border Background="{StaticResource PrimaryLightBrush}"
+                                    CornerRadius="6"
+                                    Padding="10,7"
+                                    VerticalAlignment="Bottom"
+                                    Margin="0,0,8,0">
+                                <TextBlock Text="{Binding NewAircraftTypeTotalSeats, StringFormat='Итого: {0} мест'}"
+                                           FontSize="11"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource PrimaryDarkBrush}" />
+                            </Border>
+
+                            <Button Style="{StaticResource PrimaryButtonStyle}"
+                                    Command="{Binding AddAircraftTypeCommand}"
+                                    Height="30"
+                                    Padding="12,0"
+                                    VerticalAlignment="Bottom">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="➕  " />
+                                    <TextBlock Text="Добавить тип" FontSize="12" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
 
                     <DataGrid Grid.Row="1"
                               ItemsSource="{Binding AircraftTypes}"
@@ -476,6 +600,146 @@
                     </DataGrid>
                 </Grid>
             </Border>
+
+            <!-- ВКЛАДКА 3: ТАРИФЫ И КЛАССЫ ОБСЛУЖИВАНИЯ -->
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsTabTariffs}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="340" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Таблица тарифов направлений -->
+                <Border Grid.Column="0"
+                        Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource SurfaceBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+                            <TextBlock Text="Тарифная сетка направлений (справочно)"
+                                       FontWeight="Bold"
+                                       FontSize="15"
+                                       Foreground="{StaticResource PrimaryDarkBrush}" />
+                            <TextBlock Text="Базовые ставки эконом-класса и сбор за багаж. Изменение тарифов выполняется в разделе «Управление тарифами» (W-13)."
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Margin="0,2,0,0"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <DataGrid Grid.Row="1"
+                                  ItemsSource="{Binding Tariffs}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  IsReadOnly="True"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="Horizontal"
+                                  HorizontalGridLinesBrush="#EEEEEE"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  RowHeight="40">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Вылет" Binding="{Binding OriginAirportCode}" FontWeight="Bold" Width="90" />
+                                <DataGridTextColumn Header="Прилёт" Binding="{Binding DestinationAirportCode}" FontWeight="Bold" Width="90" />
+                                <DataGridTextColumn Header="Базовый тариф (эконом)" Binding="{Binding BasePrice, StringFormat='{}{0:N0} ₽'}" FontWeight="SemiBold" Width="*" />
+                                <DataGridTextColumn Header="Сбор за багаж" Binding="{Binding BaggageFee, StringFormat='{}{0:N0} ₽'}" Width="170" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Border>
+
+                <!-- Справка по классам обслуживания -->
+                <Border Grid.Column="2"
+                        Background="{StaticResource SurfaceBrush}"
+                        BorderBrush="{StaticResource SurfaceBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="20">
+                    <StackPanel>
+                        <TextBlock Text="Классы обслуживания"
+                                   FontWeight="Bold"
+                                   FontSize="15"
+                                   Foreground="{StaticResource PrimaryDarkBrush}" />
+                        <TextBlock Text="Множители применяются к базовому тарифу направления (M5)."
+                                   FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,2,0,16"
+                                   TextWrapping="Wrap" />
+
+                        <Border Background="{StaticResource PrimaryLightBrush}"
+                                CornerRadius="8"
+                                Padding="14,10"
+                                Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Эконом" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
+                                    <TextBlock Text="Компоновка 3+3" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1"
+                                           Text="× 1.0"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource PrimaryDarkBrush}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <Border Background="#FFF3E0"
+                                CornerRadius="8"
+                                Padding="14,10"
+                                Margin="0,0,0,16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Бизнес" FontWeight="Bold" FontSize="13" Foreground="{StaticResource TextPrimaryBrush}" />
+                                    <TextBlock Text="Компоновка 2+2" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1"
+                                           Text="× 2.0"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource AccentDarkBrush}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="Коэффициенты срочности (M5)"
+                                   FontWeight="Bold"
+                                   FontSize="12"
+                                   Foreground="{StaticResource PrimaryDarkBrush}"
+                                   Margin="0,0,0,6" />
+                        <TextBlock FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap"
+                                   Text="Более 30 дней до вылета — ×1.0; 15–30 дней — ×1.2; 7–15 дней — ×1.5; менее 7 дней — ×1.8. Сбор за багаж добавляется к итоговой стоимости фиксированной суммой." />
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>
