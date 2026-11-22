@@ -4,7 +4,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:AirlineTicketOffice.Wpf.ViewModels"
-             xmlns:tariffs="clr-namespace:AirlineTicketOffice.Core.Contracts.Tariffs;assembly=AirlineTicketOffice.Core"
              xmlns:dir="clr-namespace:AirlineTicketOffice.Core.Contracts.Directory;assembly=AirlineTicketOffice.Core"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:TariffsAdminViewModel}">
@@ -18,26 +17,62 @@
                 <TextBlock Text=")" Foreground="{StaticResource TextSecondaryBrush}" />
             </StackPanel>
         </DataTemplate>
+
+        <DataTemplate x:Key="RuleCardTemplate" DataType="{x:Type vm:TariffRuleViewModel}">
+            <Border Background="{StaticResource BackgroundBrush}"
+                    BorderBrush="{StaticResource SurfaceBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="10"
+                    Margin="0,0,0,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="{Binding Title}"
+                                   FontWeight="Bold"
+                                   FontSize="12"
+                                   Foreground="{StaticResource PrimaryDarkBrush}" />
+                        <TextBlock Text="{Binding Description}"
+                                   FontSize="10"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
+                    <Border Grid.Column="1"
+                            Background="{StaticResource PrimaryLightBrush}"
+                            CornerRadius="4"
+                            Padding="8,4"
+                            Margin="8,0,0,0"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ValueText}"
+                                   FontSize="11"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource PrimaryDarkBrush}" />
+                    </Border>
+                </Grid>
+            </Border>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <!-- 1. Шапка раздела -->
             <RowDefinition Height="Auto" />
-            <!-- 2. Баннер уведомлений -->
             <RowDefinition Height="Auto" />
-            <!-- 3. Основная рабочая область (2 части: 60% и 40%) -->
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 1. Шапка -->
+        <!-- HEADER -->
         <Border Grid.Row="0"
                 Background="{StaticResource SurfaceBrush}"
                 BorderBrush="{StaticResource SurfaceBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="10"
                 Padding="20,16"
-                Margin="0,0,0,14">
+                Margin="0,0,0,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -46,34 +81,73 @@
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="🏷  " FontSize="20" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
-                    <TextBlock Text="Управление тарифами и сборами (W-13)"
-                               FontSize="18"
-                               FontWeight="Bold"
-                               Foreground="{StaticResource PrimaryDarkBrush}"
-                               VerticalAlignment="Center" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Управление тарифами и правилами (W-13)"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource PrimaryDarkBrush}" />
+                        <TextBlock Text="Базовые ставки направлений, сборы за багаж и проверочный калькулятор M5"
+                                   FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
                 </StackPanel>
 
-                <Button Grid.Column="1"
-                        Style="{StaticResource OutlineButtonStyle}"
-                        Command="{Binding RefreshDataCommand}"
-                        Padding="14,8"
-                        VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="🔄  " />
-                        <TextBlock Text="Обновить тарифы" />
-                    </StackPanel>
-                </Button>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{StaticResource BackgroundBrush}"
+                            BorderBrush="{StaticResource SurfaceBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,6"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Center">
+                        <StackPanel>
+                            <TextBlock Text="{Binding VirtualNowText}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource PrimaryDarkBrush}" />
+                            <TextBlock Text="Загрузка тарифов..."
+                                       FontSize="10"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisConverter}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Button Style="{StaticResource OutlineButtonStyle}"
+                            Command="{Binding RefreshDataCommand}"
+                            Padding="14,8">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🔄  " />
+                            <TextBlock Text="Обновить тарифы" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
 
-        <!-- 2. Баннер уведомлений -->
+        <!-- BANNERS -->
         <Border Grid.Row="1"
+                Background="#FFF3E0"
+                BorderBrush="{StaticResource AccentBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16,10"
+                Margin="0,0,0,12"
+                Visibility="{Binding IsReadOnlyMode, Converter={StaticResource BoolToVisConverter}}">
+            <TextBlock Text="Режим только для чтения: у текущего сеанса нет права «Управление тарифами» (ManageTariffs). Изменение ставок и сборов недоступно."
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="#E65100"
+                       TextWrapping="Wrap" />
+        </Border>
+
+        <Border Grid.Row="2"
                 Background="{StaticResource PrimaryLightBrush}"
                 BorderBrush="{StaticResource PrimaryBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
                 Padding="16,10"
-                Margin="0,0,0,14">
+                Margin="0,0,0,12">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Visibility" Value="Visible" />
@@ -93,267 +167,421 @@
                 <TextBlock Grid.Column="1"
                            Text="{Binding StatusMessage}"
                            FontWeight="SemiBold"
+                           FontSize="12"
                            Foreground="{StaticResource PrimaryDarkBrush}"
                            VerticalAlignment="Center"
                            TextWrapping="Wrap" />
             </Grid>
         </Border>
 
-        <!-- 3. Двухпанельная рабочая область -->
-        <Grid Grid.Row="2">
+        <!-- MAIN -->
+        <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
-                <!-- Левая панель: Таблица тарифов и редактирование (1.3*) -->
-                <ColumnDefinition Width="1.3*" />
-                <ColumnDefinition Width="16" />
-                <!-- Правая панель: Интерактивный калькулятор (*) -->
+                <ColumnDefinition Width="1.45*" />
+                <ColumnDefinition Width="14" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- ЛЕВАЯ ПАНЕЛЬ: Таблица базовых тарифов -->
+            <!-- LEFT: тарифная сетка и редактирование -->
             <Border Grid.Column="0"
                     Background="{StaticResource SurfaceBrush}"
                     BorderBrush="{StaticResource SurfaceBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="10"
-                    Padding="16">
+                    Padding="14">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0"
-                               Text="Базовая тарифная сетка маршрутов авиакомпании"
-                               FontWeight="Bold"
-                               FontSize="15"
-                               Foreground="{StaticResource PrimaryDarkBrush}"
-                               Margin="0,0,0,12" />
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="Базовая тарифная сетка направлений"
+                                   FontWeight="Bold"
+                                   FontSize="15"
+                                   Foreground="{StaticResource PrimaryDarkBrush}" />
+                        <TextBlock Text="Цена эконом-класса и сбор за одно место багажа. Бизнес-класс рассчитывается ядром как × 2,0 от базовой ставки."
+                                   FontSize="10"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,2,0,10" />
 
-                    <!-- Таблица тарифов -->
-                    <DataGrid Grid.Row="1"
-                              ItemsSource="{Binding Tariffs}"
-                              SelectedItem="{Binding SelectedTariff}"
-                              AutoGenerateColumns="False"
-                              CanUserAddRows="False"
-                              IsReadOnly="True"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal"
-                              HorizontalGridLinesBrush="#EEEEEE"
-                              Background="Transparent"
-                              BorderThickness="0"
-                              RowHeight="42">
-                        <DataGrid.Columns>
-                            <DataGridTemplateColumn Header="Маршрут" Width="140">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate DataType="{x:Type tariffs:TariffDto}">
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding OriginAirportCode}" FontWeight="Bold" Foreground="{StaticResource PrimaryDarkBrush}" />
-                                            <TextBlock Text=" ➔ " Foreground="{StaticResource TextSecondaryBrush}" />
-                                            <TextBlock Text="{Binding DestinationAirportCode}" FontWeight="Bold" Foreground="{StaticResource PrimaryDarkBrush}" />
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
 
-                            <DataGridTextColumn Header="Базовый тариф (Эконом)" Binding="{Binding BasePrice, StringFormat='{}{0:N0} ₽'}" FontWeight="SemiBold" Width="*" />
-                            <DataGridTextColumn Header="Сбор за багаж (23 кг)" Binding="{Binding BaggageFee, StringFormat='{}{0:N0} ₽'}" Width="160" />
+                            <Grid Grid.Column="0">
+                                <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
+                                         Height="32"
+                                         Padding="8,5"
+                                         FontSize="12"
+                                         VerticalContentAlignment="Center"
+                                         ToolTip="Поиск по коду или городу направления" />
+                                <TextBlock Text="Поиск по направлению (код или город)..."
+                                           IsHitTestVisible="False"
+                                           FontSize="12"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           VerticalAlignment="Center"
+                                           Margin="10,0,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding FilterText}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
 
-                            <DataGridTemplateColumn Header="Действие" Width="120">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate DataType="{x:Type tariffs:TariffDto}">
-                                        <Button Style="{StaticResource OutlineButtonStyle}"
-                                                Content="Изменить"
-                                                Command="{Binding DataContext.SelectTariffCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}"
-                                                Padding="8,4"
-                                                FontSize="11" />
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                            <Button Grid.Column="1"
+                                    Style="{StaticResource OutlineButtonStyle}"
+                                    Command="{Binding ResetFiltersCommand}"
+                                    Content="Сбросить"
+                                    Padding="10,6"
+                                    FontSize="11"
+                                    Margin="8,0,0,0" />
+                        </Grid>
+                    </StackPanel>
 
-                    <!-- Разделитель -->
-                    <Border Grid.Row="2" Height="1" Background="{StaticResource SurfaceBorderBrush}" Margin="0,12,0,12" />
+                    <!-- LEFT_TABLE -->
+                    <Grid Grid.Row="1">
+                        <DataGrid ItemsSource="{Binding FilteredTariffs}"
+                                  SelectedItem="{Binding SelectedTariff}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  IsReadOnly="True"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="Horizontal"
+                                  HorizontalGridLinesBrush="#EEEEEE"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  RowHeight="44"
+                                  ColumnHeaderHeight="32"
+                                  FontSize="12">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="Маршрут" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate DataType="{x:Type vm:TariffRowViewModel}">
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding RouteText}"
+                                                           FontWeight="Bold"
+                                                           Foreground="{StaticResource PrimaryDarkBrush}" />
+                                                <TextBlock Text="{Binding CitiesText}"
+                                                           FontSize="10"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
 
-                    <!-- Панель быстрого редактирования тарифа -->
-                    <Border Grid.Row="3"
+                                <DataGridTextColumn Header="Эконом" Width="78"
+                                                    Binding="{Binding BasePrice, StringFormat='{}{0:N0} ₽'}"
+                                                    FontWeight="SemiBold" />
+                                <DataGridTextColumn Header="Бизнес" Width="78"
+                                                    Binding="{Binding BusinessBasePrice, StringFormat='{}{0:N0} ₽'}" />
+                                <DataGridTextColumn Header="Багаж" Width="78"
+                                                    Binding="{Binding BaggageFee, StringFormat='{}{0:N0} ₽'}" />
+
+                                <DataGridTemplateColumn Header="Выбор" Width="82">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate DataType="{x:Type vm:TariffRowViewModel}">
+                                            <Button Style="{StaticResource OutlineButtonStyle}"
+                                                    Content="Изменить"
+                                                    Command="{Binding DataContext.SelectTariffCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    IsEnabled="{Binding DataContext.CanManageTariffs, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    Padding="7,4"
+                                                    FontSize="10" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <TextBlock Text="Тарифы не найдены. Измените фильтр или задайте ставку для нового направления ниже."
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   TextWrapping="Wrap"
+                                   MaxWidth="320"
+                                   TextAlignment="Center"
+                                   Visibility="{Binding HasNoTariffs, Converter={StaticResource BoolToVisConverter}}" />
+                    </Grid>
+
+                    <!-- EDIT_CARD -->
+                    <Border Grid.Row="2"
                             Background="{StaticResource BackgroundBrush}"
+                            BorderBrush="{StaticResource SurfaceBorderBrush}"
+                            BorderThickness="1"
                             CornerRadius="8"
-                            Padding="16">
+                            Padding="12"
+                            Margin="0,10,0,0">
                         <StackPanel>
-                            <TextBlock Text="{Binding SelectedTariff, StringFormat='Редактирование тарифа: {0}'}"
+                            <TextBlock Text="{Binding EditRouteTitle}"
                                        FontWeight="Bold"
                                        FontSize="13"
-                                       Foreground="{StaticResource PrimaryDarkBrush}"
-                                       Margin="0,0,0,12" />
+                                       Foreground="{StaticResource PrimaryDarkBrush}" />
+                            <TextBlock Text="{Binding EditRouteStatusText}"
+                                       FontSize="10"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,2,0,10" />
 
-                            <Grid Margin="0,0,0,12">
+                            <Grid Margin="0,0,0,8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="24" />
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="12" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Аэропорт вылета" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                                    <ComboBox ItemsSource="{Binding Airports}"
+                                              SelectedItem="{Binding EditOriginAirport}"
+                                              ItemTemplate="{StaticResource AirportComboTemplate}"
+                                              Height="32" />
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="1"
+                                           Text="➔"
+                                           FontSize="14"
+                                           Foreground="{StaticResource PrimaryBrush}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Bottom"
+                                           Margin="0,0,0,7" />
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Аэропорт назначения" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                                    <ComboBox ItemsSource="{Binding Airports}"
+                                              SelectedItem="{Binding EditDestinationAirport}"
+                                              ItemTemplate="{StaticResource AirportComboTemplate}"
+                                              Height="32" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- EDIT_FIELDS -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Базовая цена (₽) *" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                                    <TextBox Text="{Binding EditBasePrice, UpdateSourceTrigger=PropertyChanged}"
-                                             Height="36"
-                                             Padding="8,6"
-                                             FontSize="13" />
+                                    <TextBlock Text="Базовая цена эконома, ₽ *" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                                    <TextBox Text="{Binding EditBasePriceText, UpdateSourceTrigger=PropertyChanged}"
+                                             IsEnabled="{Binding CanManageTariffs}"
+                                             Height="32"
+                                             Padding="8,5"
+                                             FontSize="12"
+                                             ToolTip="Например, 7500 или 7500,50" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Сбор за багаж (₽) *" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                                    <TextBox Text="{Binding EditBaggageFee, UpdateSourceTrigger=PropertyChanged}"
-                                             Height="36"
-                                             Padding="8,6"
-                                             FontSize="13" />
+                                    <TextBlock Text="Сбор за багаж, ₽ *" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                                    <TextBox Text="{Binding EditBaggageFeeText, UpdateSourceTrigger=PropertyChanged}"
+                                             IsEnabled="{Binding CanManageTariffs}"
+                                             Height="32"
+                                             Padding="8,5"
+                                             FontSize="12"
+                                             ToolTip="Например, 1200 или 0" />
                                 </StackPanel>
 
                                 <Button Grid.Column="4"
                                         Style="{StaticResource PrimaryButtonStyle}"
                                         Command="{Binding SaveTariffCommand}"
-                                        Height="36"
-                                        Padding="16,0"
+                                        IsEnabled="{Binding CanSaveTariff}"
+                                        Height="32"
+                                        Padding="14,0"
                                         VerticalAlignment="Bottom">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="💾  " />
-                                        <TextBlock Text="Сохранить" />
+                                        <TextBlock Text="Сохранить тариф" />
                                     </StackPanel>
                                 </Button>
                             </Grid>
+
+                            <StackPanel Orientation="Horizontal">
+                                <Border Background="#E3F2FD" CornerRadius="4" Padding="7,3" Margin="0,0,5,0">
+                                    <TextBlock Text="{Binding EditBusinessBasePriceText}" FontSize="10" FontWeight="SemiBold" Foreground="#1565C0" />
+                                </Border>
+                                <Border Background="#E8F5E9" CornerRadius="4" Padding="7,3" Margin="0,0,5,0">
+                                    <TextBlock Text="{Binding EditEconomyWithBaggageText}" FontSize="10" FontWeight="SemiBold" Foreground="#2E7D32" />
+                                </Border>
+                                <Border Background="#FFF3E0" CornerRadius="4" Padding="7,3">
+                                    <TextBlock Text="{Binding EditBusinessWithBaggageText}" FontSize="10" FontWeight="SemiBold" Foreground="#E65100" />
+                                </Border>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </Grid>
             </Border>
 
-            <!-- ПРАВАЯ ПАНЕЛЬ: Интерактивный калькулятор -->
+            <!-- RIGHT_PANEL -->
             <Border Grid.Column="2"
                     Background="{StaticResource SurfaceBrush}"
                     BorderBrush="{StaticResource SurfaceBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="10"
-                    Padding="18">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel>
-                        <TextBlock Text="Интерактивный проверочный калькулятор (M5)"
-                                   FontWeight="Bold"
-                                   FontSize="15"
-                                   Foreground="{StaticResource PrimaryDarkBrush}"
-                                   Margin="0,0,0,4" />
-                        <TextBlock Text="Моделирование формулы динамического ценообразования с учётом класса, срочности и багажа."
-                                   FontSize="11"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                   Margin="0,0,0,14" />
-
-                        <!-- Откуда -->
-                        <TextBlock Text="Аэропорт вылета" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                        <ComboBox ItemsSource="{Binding Airports}"
-                                  SelectedItem="{Binding CalcOriginAirport}"
-                                  ItemTemplate="{StaticResource AirportComboTemplate}"
-                                  Height="36"
-                                  Margin="0,0,0,10" />
-
-                        <!-- Куда -->
-                        <TextBlock Text="Аэропорт назначения" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                        <ComboBox ItemsSource="{Binding Airports}"
-                                  SelectedItem="{Binding CalcDestinationAirport}"
-                                  ItemTemplate="{StaticResource AirportComboTemplate}"
-                                  Height="36"
-                                  Margin="0,0,0,10" />
-
-                        <!-- Класс обслуживания -->
-                        <TextBlock Text="Класс обслуживания" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="8" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0"
-                                    Content="Эконом (× 1.0)"
-                                    Command="{Binding SelectEconomyClassCommand}"
-                                    Height="34"
-                                    Padding="4"
-                                    FontSize="12">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource OutlineButtonStyle}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding CalcSeatClass}" Value="Economy">
-                                                <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
-                                                <Setter Property="Foreground" Value="White" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-
-                            <Button Grid.Column="2"
-                                    Content="Бизнес (× 2.0)"
-                                    Command="{Binding SelectBusinessClassCommand}"
-                                    Height="34"
-                                    Padding="4"
-                                    FontSize="12">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource OutlineButtonStyle}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding CalcSeatClass}" Value="Business">
-                                                <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
-                                                <Setter Property="Foreground" Value="White" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                            </Button>
-                        </Grid>
-
-                        <!-- Дата вылета -->
-                        <TextBlock Text="Дата вылета" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                        <DatePicker SelectedDate="{Binding CalcDepartureDate}" Height="36" Margin="0,0,0,10" />
-
-                        <!-- Чекбокс багажа -->
-                        <CheckBox Content="Добавить платное место багажа (23 кг)"
-                                  IsChecked="{Binding CalcHasBaggage}"
-                                  FontSize="12"
-                                  FontWeight="SemiBold"
-                                  Margin="0,4,0,16" />
-
-                        <!-- Карточка результатов расчёта -->
-                        <Border Background="#E8F5E9"
-                                BorderBrush="{StaticResource SuccessBrush}"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="16"
-                                Margin="0,0,0,12">
-                            <StackPanel>
-                                <TextBlock Text="Итоговая расчётная стоимость билета"
-                                           FontSize="11"
-                                           FontWeight="SemiBold"
-                                           Foreground="#2E7D32"
-                                           Margin="0,0,0,4" />
-                                <TextBlock Text="{Binding CalculatedFinalPrice, StringFormat='{}{0:N0} ₽'}"
-                                           FontSize="26"
+                    Padding="14">
+                <TabControl Background="Transparent" BorderThickness="0">
+                    <TabItem Header="Калькулятор M5">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="0,10,0,0">
+                                <TextBlock Text="Проверка формулы динамического ценообразования"
                                            FontWeight="Bold"
-                                           Foreground="#2E7D32"
-                                           Margin="0,0,0,8" />
+                                           FontSize="13"
+                                           Foreground="{StaticResource PrimaryDarkBrush}" />
+                                <TextBlock Text="Расчёт выполняется ядром ITariffCalculator: базовая ставка × класс × срочность + багаж."
+                                           FontSize="10"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,2,0,12" />
 
-                                <Border Height="1" Background="#A5D6A7" Margin="0,4,0,8" />
+                                <TextBlock Text="Аэропорт вылета" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                                <ComboBox ItemsSource="{Binding Airports}"
+                                          SelectedItem="{Binding CalcOriginAirport}"
+                                          ItemTemplate="{StaticResource AirportComboTemplate}"
+                                          Height="32"
+                                          Margin="0,0,0,8" />
 
-                                <!-- Детализированный разбор формулы -->
-                                <TextBlock Text="{Binding FormulaExplanation}"
-                                           FontSize="11"
-                                           FontFamily="Consolas, Courier New, monospace"
-                                           Foreground="#1B5E20"
-                                           TextWrapping="Wrap" />
+                                <TextBlock Text="Аэропорт назначения" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                                <ComboBox ItemsSource="{Binding Airports}"
+                                          SelectedItem="{Binding CalcDestinationAirport}"
+                                          ItemTemplate="{StaticResource AirportComboTemplate}"
+                                          Height="32"
+                                          Margin="0,0,0,10" />
+
+                                <!-- CALC_CLASS -->
+                                <TextBlock Text="Класс обслуживания" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Button Grid.Column="0"
+                                            Content="{Binding EconomyClassButtonText}"
+                                            Command="{Binding SelectEconomyClassCommand}"
+                                            Height="32"
+                                            Padding="4"
+                                            FontSize="11">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource OutlineButtonStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding CalcSeatClass}" Value="Economy">
+                                                        <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                                                        <Setter Property="Foreground" Value="White" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+
+                                    <Button Grid.Column="2"
+                                            Content="{Binding BusinessClassButtonText}"
+                                            Command="{Binding SelectBusinessClassCommand}"
+                                            Height="32"
+                                            Padding="4"
+                                            FontSize="11">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource OutlineButtonStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding CalcSeatClass}" Value="Business">
+                                                        <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                                                        <Setter Property="Foreground" Value="White" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </Grid>
+
+                                <TextBlock Text="Дата вылета" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                                <DatePicker SelectedDate="{Binding CalcDepartureDate}" Height="32" Margin="0,0,0,10" />
+
+                                <CheckBox Content="Добавить платное место багажа (23 кг)"
+                                          IsChecked="{Binding CalcHasBaggage}"
+                                          FontSize="11"
+                                          FontWeight="SemiBold"
+                                          Margin="0,0,0,12" />
+
+                                <Border Background="#E8F5E9"
+                                        BorderBrush="{StaticResource SuccessBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="14">
+                                    <StackPanel>
+                                        <TextBlock Text="Итоговая расчётная стоимость билета"
+                                                   FontSize="10"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#2E7D32" />
+                                        <TextBlock Text="{Binding CalculatedFinalPrice, StringFormat='{}{0:N0} ₽'}"
+                                                   FontSize="24"
+                                                   FontWeight="Bold"
+                                                   Foreground="#2E7D32"
+                                                   Margin="0,2,0,6" />
+                                        <Border Height="1" Background="#A5D6A7" Margin="0,2,0,6" />
+                                        <TextBlock Text="{Binding FormulaExplanation}"
+                                                   FontSize="10"
+                                                   FontFamily="Consolas, Courier New, monospace"
+                                                   Foreground="#1B5E20"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </ScrollViewer>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- RULES_TABS -->
+                    <TabItem Header="Правила возврата">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="0,10,0,0">
+                                <TextBlock Text="Правила возврата билетов (M9)"
+                                           FontWeight="Bold"
+                                           FontSize="13"
+                                           Foreground="{StaticResource PrimaryDarkBrush}" />
+                                <TextBlock Text="Проценты и удержания заданы бизнес-логикой ядра и применяются автоматически при оформлении возврата."
+                                           FontSize="10"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,2,0,10" />
+                                <ItemsControl ItemsSource="{Binding RefundRules}"
+                                              ItemTemplate="{StaticResource RuleCardTemplate}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <TabItem Header="Правила багажа">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="0,10,0,0">
+                                <TextBlock Text="Правила тарификации багажа и классов (M5)"
+                                           FontWeight="Bold"
+                                           FontSize="13"
+                                           Foreground="{StaticResource PrimaryDarkBrush}" />
+                                <TextBlock Text="Сбор за багаж задаётся отдельно для каждого направления в тарифной сетке слева."
+                                           FontSize="10"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,2,0,10" />
+                                <ItemsControl ItemsSource="{Binding BaggageRules}"
+                                              ItemTemplate="{StaticResource RuleCardTemplate}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
             </Border>
         </Grid>
     </Grid>

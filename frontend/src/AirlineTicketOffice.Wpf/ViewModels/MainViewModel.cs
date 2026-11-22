@@ -472,6 +472,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
             _cashierDeskViewModel.Dispose();
         }
 
+        _flightsAdminViewModel?.Dispose();
+        _tariffsAdminViewModel?.Dispose();
+
         GC.SuppressFinalize(this);
     }
 }
