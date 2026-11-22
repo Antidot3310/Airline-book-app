@@ -4,14 +4,49 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:AirlineTicketOffice.Wpf.ViewModels"
-        xmlns:pay="clr-namespace:AirlineTicketOffice.Core.Contracts.Payments;assembly=AirlineTicketOffice.Core"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance vm:EmulatorViewModel}"
         Title="Служебный пульт управления эмулятором (W-16)"
-        Width="960" Height="760"
-        MinWidth="880" MinHeight="680"
+        Width="1080" Height="900"
+        MinWidth="1000" MinHeight="720"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BackgroundBrush}">
+
+    <Window.Resources>
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource SurfaceBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="16" />
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+
+        <Style x:Key="CardTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{StaticResource PrimaryDarkBrush}" />
+        </Style>
+
+        <Style x:Key="SectionLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Margin" Value="0,0,0,5" />
+        </Style>
+
+        <Style x:Key="ModeRadioStyle" TargetType="RadioButton">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Margin" Value="0,0,16,8" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="TinyButtonStyle" TargetType="Button" BasedOn="{StaticResource OutlineButtonStyle}">
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+    </Window.Resources>
 
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -19,12 +54,8 @@
             <RowDefinition Height="Auto" />
             <!-- 2. Баннер уведомлений -->
             <RowDefinition Height="Auto" />
-            <!-- 3. Карточка 1: Управление временем -->
-            <RowDefinition Height="Auto" />
-            <!-- 4. Карточка 2: Платёжный шлюз -->
+            <!-- 3. Прокручиваемое содержимое пульта -->
             <RowDefinition Height="*" />
-            <!-- 5. Карточка 3: Ручной резолв таймаутов TC-15 -->
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- 1. Заголовок окна -->
@@ -48,7 +79,7 @@
                                VerticalAlignment="Center"
                                Margin="0,0,12,0" />
                     <Border Background="#37474F" CornerRadius="4" Padding="8,2" VerticalAlignment="Center">
-                        <TextBlock Text="Служебный инструмент тестирования и демонстрации"
+                        <TextBlock Text="Служебный инструмент демонстрации: время M12, шлюз M14, планировщик"
                                    FontSize="11"
                                    Foreground="#B0BEC5" />
                     </Border>
@@ -99,272 +130,650 @@
             </Grid>
         </Border>
 
-        <!-- 3. Карточка 1: Управление временем (M12) -->
-        <Border Grid.Row="2"
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource SurfaceBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="10"
-                Padding="16"
-                Margin="0,0,0,12">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+        <!-- 3. Содержимое пульта -->
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
 
-                <Grid Grid.Row="0" Margin="0,0,0,10">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                <!-- 3.1. Блок управления виртуальным временем (M12) -->
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="⏱  Виртуальное системное время: " FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding CurrentVirtualTimeText}"
-                                   FontFamily="Consolas, Cascadia Mono, monospace"
-                                   FontSize="20"
-                                   FontWeight="Bold"
-                                   Foreground="{StaticResource PrimaryDarkBrush}"
-                                   VerticalAlignment="Center"
-                                   Margin="0,0,12,0" />
-                        <Border Background="{StaticResource PrimaryLightBrush}" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding CurrentClockModeText}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource PrimaryDarkBrush}" />
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="⏱" FontSize="26" Foreground="{StaticResource PrimaryBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding CurrentVirtualDateText}"
+                                               FontSize="12"
+                                               Foreground="{StaticResource TextSecondaryBrush}" />
+                                    <TextBlock Text="{Binding CurrentVirtualTimeText}"
+                                               FontFamily="Consolas, Cascadia Mono, monospace"
+                                               FontSize="34"
+                                               FontWeight="Bold"
+                                               Foreground="{StaticResource PrimaryDarkBrush}" />
+                                </StackPanel>
+                                <StackPanel VerticalAlignment="Center">
+                                    <Border Background="{StaticResource PrimaryLightBrush}" CornerRadius="4" Padding="8,3"
+                                            HorizontalAlignment="Left">
+                                        <TextBlock Text="{Binding CurrentClockModeText}"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{StaticResource PrimaryDarkBrush}" />
+                                    </Border>
+                                    <TextBlock Text="{Binding ClockSpeedText}"
+                                               FontSize="11"
+                                               FontWeight="Bold"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               Margin="0,4,0,0" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <TextBlock Text="Виртуальное системное время ядра M12"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           HorizontalAlignment="Right" />
+                                <TextBlock Text="{Binding SessionHint}"
+                                           FontSize="10"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           TextWrapping="Wrap"
+                                           MaxWidth="430"
+                                           TextAlignment="Right"
+                                           Margin="0,3,0,0" />
+                                <TextBlock Text="{Binding LastTimeChangeText}"
+                                           FontSize="10"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           TextWrapping="Wrap"
+                                           MaxWidth="430"
+                                           TextAlignment="Right"
+                                           Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Режим виртуальных часов и множитель скорости -->
+                        <Border Background="{StaticResource BackgroundBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="260" />
+                                        <ColumnDefinition Width="20" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="20" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Режим виртуальных часов (ClockMode)" Style="{StaticResource SectionLabelStyle}" />
+                                        <ComboBox ItemsSource="{Binding ClockModes}"
+                                                  SelectedItem="{Binding SelectedClockMode}"
+                                                  DisplayMemberPath="Title"
+                                                  Height="30" />
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Множитель скорости (для ускоренного режима)"
+                                                   Style="{StaticResource SectionLabelStyle}" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="52" />
+                                            </Grid.ColumnDefinitions>
+                                            <Slider Grid.Column="0"
+                                                    Minimum="1"
+                                                    Maximum="60"
+                                                    TickFrequency="1"
+                                                    IsSnapToTickEnabled="True"
+                                                    IsEnabled="{Binding IsAcceleratedMode}"
+                                                    Value="{Binding ClockSpeedMultiplier, Mode=TwoWay}"
+                                                    Height="28"
+                                                    VerticalAlignment="Center" />
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding ClockSpeedText}"
+                                                       FontWeight="Bold"
+                                                       FontSize="13"
+                                                       Foreground="{StaticResource PrimaryDarkBrush}"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Right" />
+                                        </Grid>
+                                    </StackPanel>
+
+                                    <Button Grid.Column="4"
+                                            Style="{StaticResource PrimaryButtonStyle}"
+                                            Command="{Binding ApplyClockModeCommand}"
+                                            Padding="14,7"
+                                            VerticalAlignment="Bottom">
+                                        <TextBlock Text="Применить режим" />
+                                    </Button>
+                                </Grid>
+
+                                <TextBlock Text="{Binding ClockModeHint}"
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Быстрая перемотка времени -->
+                        <WrapPanel Margin="0,0,0,10">
+                            <Button Style="{StaticResource OutlineButtonStyle}"
+                                    Command="{Binding Advance15MinutesCommand}"
+                                    Padding="12,6"
+                                    Margin="0,0,8,8">
+                                <TextBlock Text="⏩  +15 минут (снятие брони)" />
+                            </Button>
+
+                            <Button Style="{StaticResource OutlineButtonStyle}"
+                                    Command="{Binding Advance1HourCommand}"
+                                    Padding="12,6"
+                                    Margin="0,0,8,8">
+                                <TextBlock Text="⏩  +1 час" />
+                            </Button>
+
+                            <Button Style="{StaticResource OutlineButtonStyle}"
+                                    Command="{Binding Advance1DayCommand}"
+                                    Padding="12,6"
+                                    Margin="0,0,8,8">
+                                <TextBlock Text="⏩  +1 день" />
+                            </Button>
+
+                            <Button Style="{StaticResource OutlineButtonStyle}"
+                                    Command="{Binding ResetTimeCommand}"
+                                    Padding="12,6"
+                                    Margin="0,0,8,8">
+                                <TextBlock Text="🔄  Сброс к реальному времени" />
+                            </Button>
+                        </WrapPanel>
+
+                        <!-- Произвольный шаг перемотки -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="90" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="120" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="Произвольный шаг:"
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center" />
+
+                            <TextBox Grid.Column="2"
+                                     Text="{Binding CustomShiftAmount, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="30"
+                                     Padding="8,4"
+                                     FontSize="12"
+                                     VerticalContentAlignment="Center" />
+
+                            <ComboBox Grid.Column="4"
+                                      ItemsSource="{Binding ShiftUnits}"
+                                      SelectedIndex="{Binding SelectedShiftUnitIndex}"
+                                      Height="30" />
+
+                            <Button Grid.Column="6"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Command="{Binding AdvanceCustomCommand}"
+                                    Padding="14,6">
+                                <TextBlock Text="Перемотать" />
+                            </Button>
+                        </Grid>
+
+                        <!-- Переход к моменту «за 2 часа до вылета» -->
+                        <Border Background="#F1F8E9"
+                                BorderBrush="#C8E6C9"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12"
+                                Margin="0,10,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Переход к моменту «за 2 часа до вылета»"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="#2E7D32" />
+
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="10" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <ComboBox Grid.Column="0"
+                                              ItemsSource="{Binding UpcomingFlights}"
+                                              SelectedItem="{Binding SelectedFlight}"
+                                              DisplayMemberPath="DisplayText"
+                                              Height="30"
+                                              IsEnabled="{Binding HasUpcomingFlights}" />
+
+                                    <Button Grid.Column="2"
+                                            Style="{StaticResource PrimaryButtonStyle}"
+                                            Command="{Binding JumpToTwoHoursBeforeFlightCommand}"
+                                            IsEnabled="{Binding HasUpcomingFlights}"
+                                            Padding="14,6"
+                                            Background="#2E7D32">
+                                        <TextBlock Text="⏱  Перейти за 2 часа" />
+                                    </Button>
+
+                                    <Button Grid.Column="4"
+                                            Style="{StaticResource OutlineButtonStyle}"
+                                            Command="{Binding RefreshFlightsCommand}"
+                                            Padding="12,6">
+                                        <TextBlock Text="🔄  Обновить рейсы" />
+                                    </Button>
+                                </Grid>
+
+                                <TextBlock Text="{Binding FlightsHint}"
+                                           FontSize="11"
+                                           Foreground="#558B2F"
+                                           TextWrapping="Wrap"
+                                           Margin="0,6,0,0" />
+                                <TextBlock Text="{Binding JumpTargetHint}"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="#33691E"
+                                           Margin="0,2,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Регламентные задачи планировщика -->
+                        <Border Background="#ECEFF1" CornerRadius="6" Padding="10,8" Margin="0,10,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="Плановые процессы ядра"
+                                               FontSize="12"
+                                               FontWeight="Bold"
+                                               Foreground="#37474F" />
+                                    <TextBlock Text="Снятие просроченных броней и проверка вылетов запускаются автоматически при каждом сдвиге времени."
+                                               FontSize="10"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Text="{Binding LastSchedulerEventText}"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="#455A64"
+                                               TextWrapping="Wrap"
+                                               Margin="0,3,0,0" />
+                                </StackPanel>
+
+                                <Button Grid.Column="1"
+                                        Style="{StaticResource PrimaryButtonStyle}"
+                                        Command="{Binding TriggerJobsCommand}"
+                                        Padding="14,6"
+                                        VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⚙️  " />
+                                        <TextBlock Text="Выполнить регламентные задачи сейчас" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
                         </Border>
                     </StackPanel>
-
-                    <Button Grid.Column="1"
-                            Style="{StaticResource PrimaryButtonStyle}"
-                            Command="{Binding TriggerJobsCommand}"
-                            Padding="14,6">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="⚙️  " />
-                            <TextBlock Text="Выполнить регламентные задачи" />
-                        </StackPanel>
-                    </Button>
-                </Grid>
-
-                <!-- Кнопки быстрого сдвига времени -->
-                <StackPanel Grid.Row="1" Orientation="Horizontal">
-                    <Button Style="{StaticResource OutlineButtonStyle}"
-                            Command="{Binding Advance15MinutesCommand}"
-                            Padding="12,6"
-                            Margin="0,0,8,0">
-                        <TextBlock Text="⏩  +15 минут (снятие брони)" />
-                    </Button>
-
-                    <Button Style="{StaticResource OutlineButtonStyle}"
-                            Command="{Binding Advance1HourCommand}"
-                            Padding="12,6"
-                            Margin="0,0,8,0">
-                        <TextBlock Text="⏩  +1 час" />
-                    </Button>
-
-                    <Button Style="{StaticResource OutlineButtonStyle}"
-                            Command="{Binding Advance1DayCommand}"
-                            Padding="12,6"
-                            Margin="0,0,8,0">
-                        <TextBlock Text="⏩  +1 день" />
-                    </Button>
-
-                    <Button Style="{StaticResource OutlineButtonStyle}"
-                            Command="{Binding ResetTimeCommand}"
-                            Padding="12,6">
-                        <TextBlock Text="🔄  Сброс к реальному времени" />
-                    </Button>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <!-- 4. Карточка 2: Настройка платёжного шлюза (M14) -->
-        <Border Grid.Row="3"
-                Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource SurfaceBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="10"
-                Padding="16"
-                Margin="0,0,0,12">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <!-- Настройки режима и задержки -->
-                    <RowDefinition Height="Auto" />
-                    <!-- Разделитель -->
-                    <RowDefinition Height="Auto" />
-                    <!-- Журнал входящих запросов к шлюзу -->
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <Grid Grid.Row="0" Margin="0,0,0,12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*" />
-                        <ColumnDefinition Width="20" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Выбор режима шлюза -->
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Режим обработки платёжных транзакций (M14):" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6" />
-                        <ComboBox SelectedIndex="{Binding SelectedModeIndex}" Height="34">
-                            <ComboBoxItem Content="✅ AlwaysSuccess — Всегда одобрение (успех 100%)" />
-                            <ComboBoxItem Content="❌ AlwaysReject — Всегда отказ банка-эмитента" />
-                            <ComboBoxItem Content="⏳ Timeout — Таймаут ответа (статус Indeterminate, TC-15)" />
-                            <ComboBoxItem Content="🎲 Random — Случайный исход (50% успех / 50% отказ)" />
-                        </ComboBox>
-                    </StackPanel>
-
-                    <!-- Слайдер искусственной задержки -->
-                    <StackPanel Grid.Column="2">
-                        <Grid Margin="0,0,0,4">
-                            <TextBlock Text="Искусственная задержка:" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Left" />
-                            <TextBlock Text="{Binding DelayMilliseconds, StringFormat='{}{0} мс'}" FontWeight="Bold" FontSize="12" Foreground="{StaticResource PrimaryDarkBrush}" HorizontalAlignment="Right" />
-                        </Grid>
-                        <Slider Minimum="0" Maximum="5000" SmallChange="100" LargeChange="500" Value="{Binding DelayMilliseconds}" Height="28" VerticalAlignment="Center" />
-                    </StackPanel>
-                </Grid>
-
-                <!-- Разделитель -->
-                <Border Grid.Row="1" Height="1" Background="{StaticResource SurfaceBorderBrush}" Margin="0,0,0,10" />
-
-                <!-- Журнал запросов к шлюзу -->
-                <Grid Grid.Row="2">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <Grid Grid.Row="0" Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Журнал входящих запросов к платёжному шлюзу" FontWeight="Bold" FontSize="13" Foreground="{StaticResource PrimaryDarkBrush}" VerticalAlignment="Center" />
-
-                        <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <Button Style="{StaticResource OutlineButtonStyle}"
-                                    Command="{Binding RefreshRequestsCommand}"
-                                    Padding="10,4"
-                                    FontSize="11"
-                                    Margin="0,0,8,0">
-                                <TextBlock Text="🔄 Обновить" />
-                            </Button>
-                            <Button Style="{StaticResource OutlineButtonStyle}"
-                                    Command="{Binding ClearLogCommand}"
-                                    Padding="10,4"
-                                    FontSize="11">
-                                <TextBlock Text="🗑 Очистить" />
-                            </Button>
-                        </StackPanel>
-                    </Grid>
-
-                    <DataGrid Grid.Row="1"
-                              ItemsSource="{Binding IncomingRequests}"
-                              AutoGenerateColumns="False"
-                              CanUserAddRows="False"
-                              IsReadOnly="True"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal"
-                              HorizontalGridLinesBrush="#EEEEEE"
-                              Background="Transparent"
-                              BorderThickness="0"
-                              RowHeight="32">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Время" Binding="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" Width="90" />
-                            <DataGridTextColumn Header="Заказ" Binding="{Binding OrderId, StringFormat='Заказ #{0}'}" FontWeight="SemiBold" Width="100" />
-                            <DataGridTextColumn Header="Сумма" Binding="{Binding Amount, StringFormat='{}{0:N0} ₽'}" Width="100" />
-                            <DataGridTextColumn Header="Карта" Binding="{Binding MaskedCardNumber}" Width="150" />
-                            <DataGridTextColumn Header="Статус" Binding="{Binding Status}" FontWeight="Bold" Width="120" />
-                            <DataGridTextColumn Header="Внешний ID" Binding="{Binding ExternalTransactionId}" Width="160" />
-                            <DataGridTextColumn Header="Сообщение шлюза" Binding="{Binding Message}" Width="*" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Grid>
-            </Grid>
-        </Border>
-
-        <!-- 5. Карточка 3: Ручной резолв таймаутов TC-15 -->
-        <Border Grid.Row="4"
-                Background="#FFF8E1"
-                BorderBrush="#FFE082"
-                BorderThickness="1"
-                CornerRadius="10"
-                Padding="16">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <Grid Grid.Row="0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="140" />
-                        <ColumnDefinition Width="10" />
-                        <ColumnDefinition Width="140" />
-                        <ColumnDefinition Width="10" />
-                        <ColumnDefinition Width="140" />
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Text="Ручное подтверждение таймаутов (кейс TC-15)"
-                                   FontWeight="Bold"
-                                   FontSize="13"
-                                   Foreground="#F57F17" />
-                        <TextBlock Text="Разрешение зависших платежей со статусом Indeterminate (после таймаута шлюза)."
-                                   FontSize="11"
-                                   Foreground="{StaticResource TextSecondaryBrush}" />
-                    </StackPanel>
-
-                    <!-- Поле ввода ID платежа -->
-                    <TextBox Grid.Column="2"
-                             Text="{Binding PendingPaymentId, UpdateSourceTrigger=PropertyChanged}"
-                             Height="34"
-                             Padding="8,6"
-                             FontSize="13"
-                             VerticalContentAlignment="Center" />
-
-                    <!-- Подтвердить успех -->
-                    <Button Grid.Column="4"
-                            Style="{StaticResource PrimaryButtonStyle}"
-                            Command="{Binding ResolveSuccessCommand}"
-                            Height="34"
-                            Padding="10,0"
-                            Background="#2E7D32">
-                        <TextBlock Text="✅ Успех" />
-                    </Button>
-
-                    <!-- Отклонить -->
-                    <Button Grid.Column="6"
-                            Style="{StaticResource PrimaryButtonStyle}"
-                            Command="{Binding ResolveRejectCommand}"
-                            Height="34"
-                            Padding="10,0"
-                            Background="#C62828">
-                        <TextBlock Text="❌ Отказ" />
-                    </Button>
-                </Grid>
-
-                <!-- Сообщение результата резолва -->
-                <Border Grid.Row="1"
-                        Background="#FFFFFF"
-                        BorderBrush="#FFD54F"
-                        BorderThickness="1"
-                        CornerRadius="6"
-                        Padding="10,6"
-                        Margin="0,8,0,0">
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Setter Property="Visibility" Value="Visible" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding ResolveMessage}" Value="{x:Null}">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Border.Style>
-                    <TextBlock Text="{Binding ResolveMessage}" FontWeight="Bold" FontSize="12" Foreground="#E65100" />
                 </Border>
-            </Grid>
-        </Border>
+
+                <!-- 3.2. Настройка платёжного шлюза (M14) -->
+                <Border Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Настройка платёжного шлюза (M14)" Style="{StaticResource CardTitleStyle}" />
+                                <TextBlock Text="Режим ответа эмулятора, искусственная задержка и журнал входящих запросов."
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Margin="0,3,0,0" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Background="{StaticResource PrimaryLightBrush}" CornerRadius="4" Padding="8,3" Margin="0,0,8,0">
+                                    <TextBlock Text="{Binding PaymentModeTitle}"
+                                               FontSize="11"
+                                               FontWeight="Bold"
+                                               Foreground="{StaticResource PrimaryDarkBrush}" />
+                                </Border>
+
+                                <Border Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1"
+                                        CornerRadius="4" Padding="8,3">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasPendingRequests}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock Text="{Binding PendingRequestsCount, StringFormat='Требуют подтверждения: {0}'}"
+                                               FontSize="11"
+                                               FontWeight="Bold"
+                                               Foreground="#E65100" />
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Режим ответа шлюза -->
+                        <Border Background="{StaticResource BackgroundBrush}" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="Режим обработки платёжных транзакций (PaymentEmulatorMode)"
+                                           Style="{StaticResource SectionLabelStyle}" />
+
+                                <WrapPanel>
+                                    <RadioButton Content="✅  Всегда успех"
+                                                 GroupName="PaymentMode"
+                                                 Style="{StaticResource ModeRadioStyle}"
+                                                 IsChecked="{Binding IsModeAlwaysSuccess, Mode=OneWay}"
+                                                 Command="{Binding SelectPaymentModeCommand}"
+                                                 CommandParameter="AlwaysSuccess" />
+
+                                    <RadioButton Content="❌  Всегда отказ"
+                                                 GroupName="PaymentMode"
+                                                 Style="{StaticResource ModeRadioStyle}"
+                                                 IsChecked="{Binding IsModeAlwaysReject, Mode=OneWay}"
+                                                 Command="{Binding SelectPaymentModeCommand}"
+                                                 CommandParameter="AlwaysReject" />
+
+                                    <RadioButton Content="⏳  Имитация таймаута"
+                                                 GroupName="PaymentMode"
+                                                 Style="{StaticResource ModeRadioStyle}"
+                                                 IsChecked="{Binding IsModeTimeout, Mode=OneWay}"
+                                                 Command="{Binding SelectPaymentModeCommand}"
+                                                 CommandParameter="Timeout" />
+
+                                    <RadioButton Content="🎲  Случайный ответ"
+                                                 GroupName="PaymentMode"
+                                                 Style="{StaticResource ModeRadioStyle}"
+                                                 IsChecked="{Binding IsModeRandom, Mode=OneWay}"
+                                                 Command="{Binding SelectPaymentModeCommand}"
+                                                 CommandParameter="Random" />
+                                </WrapPanel>
+
+                                <TextBlock Text="{Binding PaymentModeHint}"
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Искусственная задержка -->
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="210" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="60" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0"
+                                       Text="Искусственная задержка ответа:"
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center" />
+
+                            <Slider Grid.Column="2"
+                                    Minimum="0"
+                                    Maximum="5000"
+                                    SmallChange="100"
+                                    LargeChange="500"
+                                    Value="{Binding DelayMilliseconds, Mode=TwoWay}"
+                                    Height="28"
+                                    VerticalAlignment="Center" />
+
+                            <TextBlock Grid.Column="3"
+                                       Text="{Binding DelayMilliseconds, StringFormat='{}{0} мс'}"
+                                       FontWeight="Bold"
+                                       FontSize="12"
+                                       Foreground="{StaticResource PrimaryDarkBrush}"
+                                       HorizontalAlignment="Right"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+
+                        <!-- Заголовок журнала запросов -->
+                        <Grid Margin="0,4,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <TextBlock Text="Журнал входящих запросов к платёжному шлюзу"
+                                           FontSize="13"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource PrimaryDarkBrush}" />
+                                <TextBlock Text="{Binding RequestsSummaryText}"
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Margin="0,2,0,0" />
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <CheckBox Content="Только требующие подтверждения"
+                                          IsChecked="{Binding ShowOnlyIndeterminate, Mode=TwoWay}"
+                                          FontSize="11"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,12,0" />
+
+                                <Button Style="{StaticResource TinyButtonStyle}"
+                                        Command="{Binding RefreshRequestsCommand}"
+                                        Margin="0,0,8,0">
+                                    <TextBlock Text="🔄 Обновить" />
+                                </Button>
+
+                                <Button Style="{StaticResource TinyButtonStyle}"
+                                        Command="{Binding ClearLogCommand}">
+                                    <TextBlock Text="🗑 Очистить" />
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Таблица журнала запросов -->
+                        <Grid>
+                            <DataGrid Height="250"
+                                      ItemsSource="{Binding IncomingRequests}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      IsReadOnly="True"
+                                      HeadersVisibility="Column"
+                                      GridLinesVisibility="Horizontal"
+                                      HorizontalGridLinesBrush="#EEEEEE"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      RowHeight="30">
+                                <DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow">
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding RequiresManualResolve}" Value="True">
+                                                <Setter Property="Background" Value="#FFF8E1" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.RowStyle>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Время" Binding="{Binding TimestampText}" Width="105" />
+                                    <DataGridTextColumn Header="Заказ" Binding="{Binding OrderText}" FontWeight="SemiBold" Width="100" />
+                                    <DataGridTextColumn Header="Сумма" Binding="{Binding AmountText}" Width="105" />
+                                    <DataGridTextColumn Header="Карта" Binding="{Binding MaskedCardNumber}" Width="150" />
+                                    <DataGridTemplateColumn Header="Статус" Width="155">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding StatusText}" FontWeight="Bold" VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#2E7D32" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding RequiresManualResolve}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#E65100" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Status}" Value="Failed">
+                                                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTextColumn Header="Внешний ID" Binding="{Binding ExternalTransactionId}" Width="160" />
+                                    <DataGridTemplateColumn Header="Сообщение шлюза" Width="*">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Message}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding Message}"
+                                                           VerticalAlignment="Center" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <TextBlock Text="Журнал входящих запросов пуст. Выполните оплату картой в окне W-06 или W-08."
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasNoRequests}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 3.3. Ручное подтверждение зависших платежей (TC-15) -->
+                <Border Background="#FFF8E1"
+                        BorderBrush="#FFE082"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="140" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Ручное подтверждение таймаутов (кейс TC-15)"
+                                               FontWeight="Bold"
+                                               FontSize="13"
+                                               Foreground="#F57F17"
+                                               VerticalAlignment="Center" />
+                                    <Border Background="#FFE082" CornerRadius="4" Padding="6,1" Margin="8,0,0,0"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="Indeterminate" FontSize="10" FontWeight="Bold" Foreground="#E65100" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Text="{Binding PendingPaymentHint}"
+                                           FontSize="11"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <TextBox Grid.Column="2"
+                                     Text="{Binding PendingPaymentId, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="32"
+                                     Padding="8,6"
+                                     FontSize="13"
+                                     VerticalContentAlignment="Center"
+                                     ToolTip="Идентификатор платежа" />
+
+                            <Button Grid.Column="4"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Command="{Binding ResolveSuccessCommand}"
+                                    Height="32"
+                                    Padding="10,0"
+                                    Background="#2E7D32">
+                                <TextBlock Text="✅ Успех" />
+                            </Button>
+
+                            <Button Grid.Column="6"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Command="{Binding ResolveRejectCommand}"
+                                    Height="32"
+                                    Padding="10,0"
+                                    Background="#C62828">
+                                <TextBlock Text="❌ Отказ" />
+                            </Button>
+                        </Grid>
+
+                        <Border Grid.Row="1"
+                                Background="#FFFFFF"
+                                BorderBrush="#FFD54F"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="10,6"
+                                Margin="0,8,0,0">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ResolveMessage}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="{Binding ResolveMessage}" FontWeight="Bold" FontSize="12" TextWrapping="Wrap">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#C62828" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsResolveSucceeded}" Value="True">
+                                                <Setter Property="Foreground" Value="#2E7D32" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Border>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </Window>
