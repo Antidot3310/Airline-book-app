@@ -6,6 +6,7 @@ using AirlineTicketOffice.Core.Contracts.Common;
 using AirlineTicketOffice.Core.Contracts.Documents;
 using AirlineTicketOffice.Core.Contracts.Orders;
 using AirlineTicketOffice.Core.Contracts.Refunds;
+using AirlineTicketOffice.Core.Contracts.Session;
 using AirlineTicketOffice.Wpf.Services;
 
 namespace AirlineTicketOffice.Wpf.ViewModels;
@@ -22,6 +23,7 @@ public partial class RefundTicketViewModel : ObservableObject
     private readonly IVirtualClockService _clockService;
     private readonly INavigationService _navigationService;
     private readonly IOrderTicketService _orderTicketService;
+    private readonly ISessionService _sessionService;
 
     [ObservableProperty]
     private int _ticketId;
@@ -71,13 +73,56 @@ public partial class RefundTicketViewModel : ObservableObject
     [ObservableProperty]
     private bool _isProcessing;
 
+    /// <summary>
+    /// Признак наличия у текущей сессии права на оформление возврата билета.
+    /// </summary>
+    [ObservableProperty]
+    private bool _hasRefundPermission;
+
     [ObservableProperty]
     private string? _errorMessage;
+
+    /// <summary>
+    /// Признак доступности кнопки подтверждения возврата:
+    /// расчёт разрешает возврат, у сессии есть право <see cref="SessionPermissions.RefundTicket"/>,
+    /// и операция ещё не выполняется.
+    /// </summary>
+    public bool CanConfirmRefund => IsRefundAllowed && HasRefundPermission && !IsProcessing;
 
     /// <summary>
     /// Текстовое представление процента возврата.
     /// </summary>
     public string RefundPercentText => $"{RefundPercent}%";
+
+    /// <summary>
+    /// Текстовое представление процента удержания (штрафа).
+    /// </summary>
+    public string PenaltyPercentText => $"{100 - RefundPercent}%";
+
+    /// <summary>
+    /// Обновляет вычисляемые подписи при изменении процента возврата.
+    /// </summary>
+    partial void OnRefundPercentChanged(int value)
+    {
+        OnPropertyChanged(nameof(RefundPercentText));
+        OnPropertyChanged(nameof(RefundBadgeColor));
+        OnPropertyChanged(nameof(PenaltyPercentText));
+    }
+
+    /// <summary>
+    /// Обновляет доступность команды подтверждения при изменении результата расчёта.
+    /// </summary>
+    partial void OnIsRefundAllowedChanged(bool value) => OnPropertyChanged(nameof(CanConfirmRefund));
+
+    /// <summary>
+    /// Обновляет доступность команды подтверждения при изменении прав сессии.
+    /// </summary>
+    partial void OnHasRefundPermissionChanged(bool value) => OnPropertyChanged(nameof(CanConfirmRefund));
+
+    /// <summary>
+    /// Блокирует повторное подтверждение возврата во время выполнения операции.
+    /// </summary>
+    partial void OnIsProcessingChanged(bool value) => OnPropertyChanged(nameof(CanConfirmRefund));
 
     /// <summary>
     /// Цвет фона бейджа процента возврата.
@@ -107,13 +152,15 @@ public partial class RefundTicketViewModel : ObservableObject
         IDocumentService documentService,
         IVirtualClockService clockService,
         INavigationService navigationService,
-        IOrderTicketService orderTicketService)
+        IOrderTicketService orderTicketService,
+        ISessionService sessionService)
     {
         _refundService = refundService ?? throw new ArgumentNullException(nameof(refundService));
         _documentService = documentService ?? throw new ArgumentNullException(nameof(documentService));
         _clockService = clockService ?? throw new ArgumentNullException(nameof(clockService));
         _navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         _orderTicketService = orderTicketService ?? throw new ArgumentNullException(nameof(orderTicketService));
+        _sessionService = sessionService ?? throw new ArgumentNullException(nameof(sessionService));
     }
 
     /// <summary>
@@ -125,6 +172,7 @@ public partial class RefundTicketViewModel : ObservableObject
         TicketId = ticketId;
         ErrorMessage = null;
         IsProcessing = false;
+        HasRefundPermission = _sessionService.HasPermission(SessionPermissions.RefundTicket);
 
         Result<TicketDto> ticketResult = _orderTicketService.GetTicketById(ticketId);
         if (ticketResult.IsFailure)
@@ -175,10 +223,12 @@ public partial class RefundTicketViewModel : ObservableObject
         RefundAmount = calc.RefundAmount;
         PenaltyAmount = calc.PenaltyAmount;
         RuleDescription = calc.ReasonDescription;
-        IsRefundAllowed = calc.IsRefundAllowed;
+        IsRefundAllowed = calc.IsRefundAllowed && HasRefundPermission;
 
-        OnPropertyChanged(nameof(RefundPercentText));
-        OnPropertyChanged(nameof(RefundBadgeColor));
+        if (!HasRefundPermission)
+        {
+            ErrorMessage = "Недостаточно прав для оформления возврата: текущая роль не имеет разрешения «RefundTicket».";
+        }
     }
 
     /// <summary>
@@ -187,16 +237,28 @@ public partial class RefundTicketViewModel : ObservableObject
     [RelayCommand]
     public void ConfirmRefund()
     {
-        if (!IsRefundAllowed || IsProcessing)
+        if (!CanConfirmRefund)
         {
             return;
         }
 
-        IsProcessing = true;
         ErrorMessage = null;
+        IsProcessing = true;
 
-        Result<RefundResultDto> result = _refundService.ProcessRefund(TicketId);
-        IsProcessing = false;
+        Result<RefundResultDto> result;
+        try
+        {
+            result = _refundService.ProcessRefund(TicketId);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Ошибка проведения возврата: {ex.Message}";
+            return;
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
 
         if (result.IsFailure)
         {
@@ -205,9 +267,16 @@ public partial class RefundTicketViewModel : ObservableObject
         }
 
         RefundResultDto refundResult = result.Value;
+
+        // Повторный возврат того же билета недопустим — блокируем кнопку до закрытия окна.
+        IsRefundAllowed = false;
+        RefundAmount = refundResult.RefundAmount;
+        PenaltyAmount = refundResult.PenaltyAmount;
+        RefundPercent = refundResult.RefundPercent;
+
         RefundCompleted?.Invoke(refundResult);
 
-        // Формируем чек возврата W-10 и открываем окно предпросмотра
+        // Формируем чек возврата W-10 и открываем окно предпросмотра.
         try
         {
             PrintDocumentDto receiptDoc = _documentService.GenerateRefundReceipt(refundResult.RefundId);
@@ -215,11 +284,8 @@ public partial class RefundTicketViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(
-                $"Возврат успешно проведён, но не удалось сформировать чек: {ex.Message}",
-                "Возврат билета",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Warning);
+            ErrorMessage = $"Возврат успешно проведён, но чек возврата не сформирован: {ex.Message}";
+            return;
         }
 
         CloseRequested?.Invoke();
