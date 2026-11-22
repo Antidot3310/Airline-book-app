@@ -4,7 +4,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:AirlineTicketOffice.Wpf.ViewModels"
-             xmlns:flights="clr-namespace:AirlineTicketOffice.Core.Contracts.Flights;assembly=AirlineTicketOffice.Core"
              xmlns:dir="clr-namespace:AirlineTicketOffice.Core.Contracts.Directory;assembly=AirlineTicketOffice.Core"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:FlightsAdminViewModel}">
@@ -19,38 +18,36 @@
             </StackPanel>
         </DataTemplate>
 
-        <DataTemplate x:Key="AircraftComboTemplate" DataType="{x:Type dir:AircraftDto}">
+        <DataTemplate x:Key="AircraftOptionTemplate" DataType="{x:Type vm:AircraftOptionViewModel}">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="{Binding TailNumber}" FontWeight="Bold" Foreground="{StaticResource PrimaryDarkBrush}" />
                 <TextBlock Text=" — " Foreground="{StaticResource TextSecondaryBrush}" />
                 <TextBlock Text="{Binding AircraftTypeName}" />
-                <TextBlock Text="{Binding Status, StringFormat=' ({0})'}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" />
+                <TextBlock Text="{Binding StatusText, StringFormat=' ({0})'}"
+                           FontSize="11"
+                           Foreground="{StaticResource TextSecondaryBrush}" />
             </StackPanel>
         </DataTemplate>
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <!-- 1. Шапка и кнопки действий -->
             <RowDefinition Height="Auto" />
-            <!-- 2. Баннер уведомлений -->
             <RowDefinition Height="Auto" />
-            <!-- 3. Панель создания / смены борта (раскрывающаяся) -->
             <RowDefinition Height="Auto" />
-            <!-- 4. Панель фильтров -->
             <RowDefinition Height="Auto" />
-            <!-- 5. Таблица рейсов -->
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 1. Шапка раздела -->
+        <!-- HEADER -->
         <Border Grid.Row="0"
                 Background="{StaticResource SurfaceBrush}"
                 BorderBrush="{StaticResource SurfaceBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="10"
                 Padding="20,16"
-                Margin="0,0,0,14">
+                Margin="0,0,0,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -59,16 +56,41 @@
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="🗓  " FontSize="20" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
-                    <TextBlock Text="Управление рейсами и расписанием (W-12)"
-                               FontSize="18"
-                               FontWeight="Bold"
-                               Foreground="{StaticResource PrimaryDarkBrush}"
-                               VerticalAlignment="Center" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="Управление рейсами и расписанием (W-12)"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   Foreground="{StaticResource PrimaryDarkBrush}" />
+                        <TextBlock Text="Создание рейса, замена воздушного судна и отмена с массовым возвратом"
+                                   FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{StaticResource BackgroundBrush}"
+                            BorderBrush="{StaticResource SurfaceBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="10,6"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Center">
+                        <StackPanel>
+                            <TextBlock Text="{Binding VirtualNowText}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource PrimaryDarkBrush}" />
+                            <TextBlock Text="Загрузка расписания..."
+                                       FontSize="10"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisConverter}}" />
+                        </StackPanel>
+                    </Border>
+
                     <Button Style="{StaticResource PrimaryButtonStyle}"
                             Command="{Binding StartCreateFlightCommand}"
+                            IsEnabled="{Binding CanManageFlights}"
                             Padding="16,8"
                             Margin="0,0,10,0">
                         <StackPanel Orientation="Horizontal">
@@ -89,14 +111,29 @@
             </Grid>
         </Border>
 
-        <!-- 2. Баннер уведомлений -->
+        <!-- BANNERS -->
         <Border Grid.Row="1"
+                Background="#FFF3E0"
+                BorderBrush="{StaticResource AccentBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="16,10"
+                Margin="0,0,0,12"
+                Visibility="{Binding IsReadOnlyMode, Converter={StaticResource BoolToVisConverter}}">
+            <TextBlock Text="Режим только для чтения: у текущего сеанса нет права «Управление рейсами» (ManageFlights). Создание, замена борта и отмена рейсов недоступны."
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="#E65100"
+                       TextWrapping="Wrap" />
+        </Border>
+
+        <Border Grid.Row="2"
                 Background="{StaticResource PrimaryLightBrush}"
                 BorderBrush="{StaticResource PrimaryBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
                 Padding="16,10"
-                Margin="0,0,0,14">
+                Margin="0,0,0,12">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Visibility" Value="Visible" />
@@ -116,20 +153,21 @@
                 <TextBlock Grid.Column="1"
                            Text="{Binding StatusMessage}"
                            FontWeight="SemiBold"
+                           FontSize="12"
                            Foreground="{StaticResource PrimaryDarkBrush}"
                            VerticalAlignment="Center"
                            TextWrapping="Wrap" />
             </Grid>
         </Border>
 
-        <!-- 3. Панель создания рейса (раскрывается по IsCreatingFlight) -->
-        <Border Grid.Row="2"
+        <!-- PANELS -->
+        <Border Grid.Row="3"
                 Background="{StaticResource SurfaceBrush}"
                 BorderBrush="{StaticResource PrimaryBrush}"
                 BorderThickness="1.5"
                 CornerRadius="10"
                 Padding="20"
-                Margin="0,0,0,16">
+                Margin="0,0,0,12">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -142,103 +180,109 @@
             </Border.Style>
 
             <StackPanel>
-                <TextBlock Text="Форма создания нового регулярного рейса"
+                <TextBlock Text="Форма создания нового рейса"
                            FontWeight="Bold"
                            FontSize="15"
                            Foreground="{StaticResource PrimaryDarkBrush}"
-                           Margin="0,0,0,16" />
+                           Margin="0,0,0,4" />
+                <TextBlock Text="Посадочные места генерируются автоматически по схеме выбранного типа воздушного судна. Борт на техобслуживании назначить нельзя (TC-11)."
+                           FontSize="11"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,14" />
 
-                <Grid Margin="0,0,0,12">
+                <Grid Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="160" />
-                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="12" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="12" />
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="1.5*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="1.3*" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- Номер рейса -->
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="Номер рейса *" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <TextBlock Text="Номер рейса *" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
                         <TextBox Text="{Binding NewFlightNumber, UpdateSourceTrigger=PropertyChanged}"
-                                 Height="36"
+                                 Height="34"
                                  Padding="8,6"
-                                 FontSize="13" />
+                                 FontSize="13"
+                                 ToolTip="Например, SU-105" />
                     </StackPanel>
 
-                    <!-- Аэропорт вылета -->
                     <StackPanel Grid.Column="2">
-                        <TextBlock Text="Откуда (вылет) *" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <TextBlock Text="Откуда (вылет) *" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
                         <ComboBox ItemsSource="{Binding OriginAirports}"
                                   SelectedItem="{Binding SelectedOriginAirport}"
                                   ItemTemplate="{StaticResource AirportComboTemplate}"
-                                  Height="36" />
+                                  Height="34" />
                     </StackPanel>
 
-                    <!-- Аэропорт назначения -->
                     <StackPanel Grid.Column="4">
-                        <TextBlock Text="Куда (прилёт) *" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <TextBlock Text="Куда (прилёт) *" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
                         <ComboBox ItemsSource="{Binding DestinationAirports}"
                                   SelectedItem="{Binding SelectedDestinationAirport}"
                                   ItemTemplate="{StaticResource AirportComboTemplate}"
-                                  Height="36" />
+                                  Height="34" />
                     </StackPanel>
 
-                    <!-- Воздушное судно -->
                     <StackPanel Grid.Column="6">
-                        <TextBlock Text="Воздушное судно (борт) *" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <TextBlock Text="Воздушное судно (борт) *" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
                         <ComboBox ItemsSource="{Binding AvailableAircraftList}"
                                   SelectedItem="{Binding SelectedAircraft}"
-                                  ItemTemplate="{StaticResource AircraftComboTemplate}"
-                                  Height="36" />
+                                  ItemTemplate="{StaticResource AircraftOptionTemplate}"
+                                  Height="34" />
                     </StackPanel>
                 </Grid>
 
-                <Grid Margin="0,0,0,16">
+                <!-- CREATE_TAIL -->
+                <Grid Margin="0,0,0,14">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="160" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="120" />
-                        <ColumnDefinition Width="24" />
-                        <ColumnDefinition Width="160" />
-                        <ColumnDefinition Width="16" />
-                        <ColumnDefinition Width="120" />
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="90" />
+                        <ColumnDefinition Width="18" />
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="90" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- Дата вылета -->
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="Дата вылета *" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                        <DatePicker SelectedDate="{Binding DepartureDate}" Height="36" />
+                        <TextBlock Text="Дата вылета *" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <DatePicker SelectedDate="{Binding DepartureDate}" Height="34" />
                     </StackPanel>
 
-                    <!-- Время вылета -->
                     <StackPanel Grid.Column="2">
-                        <TextBlock Text="Время вылета *" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                        <TextBox Text="{Binding DepartureTimeStr, UpdateSourceTrigger=PropertyChanged}" Height="36" Padding="8,6" />
+                        <TextBlock Text="Время (ЧЧ:ММ) *" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <TextBox Text="{Binding DepartureTimeText, UpdateSourceTrigger=PropertyChanged}" Height="34" Padding="8,6" />
                     </StackPanel>
 
-                    <!-- Дата прилёта -->
                     <StackPanel Grid.Column="4">
-                        <TextBlock Text="Дата прилёта *" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                        <DatePicker SelectedDate="{Binding ArrivalDate}" Height="36" />
+                        <TextBlock Text="Дата прилёта *" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <DatePicker SelectedDate="{Binding ArrivalDate}" Height="34" />
                     </StackPanel>
 
-                    <!-- Время прилёта -->
                     <StackPanel Grid.Column="6">
-                        <TextBlock Text="Время прилёта *" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                        <TextBox Text="{Binding ArrivalTimeStr, UpdateSourceTrigger=PropertyChanged}" Height="36" Padding="8,6" />
+                        <TextBlock Text="Время (ЧЧ:ММ) *" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
+                        <TextBox Text="{Binding ArrivalTimeText, UpdateSourceTrigger=PropertyChanged}" Height="34" Padding="8,6" />
                     </StackPanel>
+
+                    <TextBlock Grid.Column="7"
+                               Text="Вылет должен быть позже виртуального времени ядра, прилёт — позже вылета."
+                               FontSize="10"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Bottom"
+                               Margin="8,0,0,8" />
                 </Grid>
 
-                <!-- Кнопки формы -->
                 <StackPanel Orientation="Horizontal">
                     <Button Style="{StaticResource PrimaryButtonStyle}"
                             Command="{Binding CreateFlightCommand}"
-                            Padding="20,10"
-                            Margin="0,0,12,0">
+                            Padding="18,9"
+                            Margin="0,0,10,0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="✈  " />
                             <TextBlock Text="Сохранить и сгенерировать места" />
@@ -247,21 +291,21 @@
 
                     <Button Style="{StaticResource OutlineButtonStyle}"
                             Command="{Binding CancelCreateFlightCommand}"
-                            Padding="16,10">
+                            Padding="16,9">
                         <TextBlock Text="Отмена" />
                     </Button>
                 </StackPanel>
             </StackPanel>
         </Border>
 
-        <!-- 3.1. Панель смены борта (раскрывается по IsChangingAircraft) -->
-        <Border Grid.Row="2"
+        <!-- CHANGE_PANEL -->
+        <Border Grid.Row="3"
                 Background="{StaticResource SurfaceBrush}"
                 BorderBrush="{StaticResource AccentBrush}"
                 BorderThickness="1.5"
                 CornerRadius="10"
                 Padding="20"
-                Margin="0,0,0,16">
+                Margin="0,0,0,12">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -274,13 +318,27 @@
             </Border.Style>
 
             <StackPanel>
-                <TextBlock Text="{Binding SelectedFlightForChangeAircraft.FlightNumber, StringFormat='Замена воздушного судна для рейса {0}'}"
+                <TextBlock Text="{Binding ChangeAircraftTitle}"
                            FontWeight="Bold"
                            FontSize="15"
                            Foreground="{StaticResource PrimaryDarkBrush}"
-                           Margin="0,0,0,12" />
+                           Margin="0,0,0,4" />
 
-                <Grid Margin="0,0,0,16">
+                <TextBlock FontSize="11"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           TextWrapping="Wrap"
+                           Margin="0,0,0,14">
+                    <Run Text="Маршрут: " />
+                    <Run Text="{Binding FlightForAircraftChange.RouteText, Mode=OneWay}" FontWeight="SemiBold" />
+                    <Run Text=" • Вылет: " />
+                    <Run Text="{Binding FlightForAircraftChange.DepartureText, Mode=OneWay}" />
+                    <Run Text=" • Текущий борт: " />
+                    <Run Text="{Binding FlightForAircraftChange.AircraftText, Mode=OneWay}" />
+                    <LineBreak />
+                    <Run Text="Смена борта запрещена, если на рейс уже проданы или забронированы билеты (TC-10)." />
+                </TextBlock>
+
+                <Grid Margin="0,0,0,14">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="16" />
@@ -288,17 +346,20 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0">
-                        <TextBlock Text="Выберите новый борт из доступных в строю (TC-09/10):" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4" />
-                        <ComboBox ItemsSource="{Binding AvailableAircraftList}"
+                        <TextBlock Text="Новый борт из доступных в строю *"
+                                   FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,0,0,4" />
+                        <ComboBox ItemsSource="{Binding ReplacementAircraftList}"
                                   SelectedItem="{Binding SelectedNewAircraft}"
-                                  ItemTemplate="{StaticResource AircraftComboTemplate}"
-                                  Height="38" />
+                                  ItemTemplate="{StaticResource AircraftOptionTemplate}"
+                                  Height="36" />
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Bottom">
                         <Button Style="{StaticResource AccentButtonStyle}"
                                 Command="{Binding ConfirmChangeAircraftCommand}"
-                                Height="38"
+                                Height="36"
                                 Padding="18,0"
                                 Margin="0,0,10,0">
                             <TextBlock Text="Подтвердить замену борта" />
@@ -306,7 +367,7 @@
 
                         <Button Style="{StaticResource OutlineButtonStyle}"
                                 Command="{Binding CancelChangeAircraftCommand}"
-                                Height="38"
+                                Height="36"
                                 Padding="16,0">
                             <TextBlock Text="Отмена" />
                         </Button>
@@ -315,175 +376,304 @@
             </StackPanel>
         </Border>
 
-        <!-- 4. Панель фильтров рейсов -->
-        <Border Grid.Row="3"
+        <!-- FILTERS -->
+        <Border Grid.Row="4"
                 Background="{StaticResource SurfaceBrush}"
                 BorderBrush="{StaticResource SurfaceBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
                 Padding="12"
-                Margin="0,0,0,14">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="220" />
-                </Grid.ColumnDefinitions>
+                Margin="0,0,0,12">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                <!-- Вкладки фильтров статусов -->
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <Button Content="Все"
-                            Style="{StaticResource OutlineButtonStyle}"
-                            Command="{Binding FilterByStatusCommand}"
-                            CommandParameter="0"
-                            Padding="12,6"
-                            Margin="0,0,6,0" />
-                    <Button Content="Запланированные"
-                            Style="{StaticResource OutlineButtonStyle}"
-                            Command="{Binding FilterByStatusCommand}"
-                            CommandParameter="1"
-                            Padding="12,6"
-                            Margin="0,0,6,0" />
-                    <Button Content="Вылетели"
-                            Style="{StaticResource OutlineButtonStyle}"
-                            Command="{Binding FilterByStatusCommand}"
-                            CommandParameter="2"
-                            Padding="12,6"
-                            Margin="0,0,6,0" />
-                    <Button Content="Отменённые"
-                            Style="{StaticResource OutlineButtonStyle}"
-                            Command="{Binding FilterByStatusCommand}"
-                            CommandParameter="3"
-                            Padding="12,6" />
-                </StackPanel>
+                    <ItemsControl Grid.Column="0" ItemsSource="{Binding StatusFilters}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:FlightStatusFilterOption}">
+                                <Button Content="{Binding DisplayTitle}"
+                                        Command="{Binding DataContext.SelectStatusFilterCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        Padding="12,6"
+                                        Margin="0,0,6,0"
+                                        FontSize="12">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource OutlineButtonStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="Background" Value="{StaticResource PrimaryBrush}" />
+                                                    <Setter Property="Foreground" Value="White" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
 
-                <!-- Поиск по номеру рейса -->
-                <TextBox Grid.Column="2"
-                         Text="{Binding FilterFlightNumber, UpdateSourceTrigger=PropertyChanged}"
-                         Height="34"
-                         Padding="8,6"
-                         FontSize="12"
-                         VerticalContentAlignment="Center" />
-            </Grid>
+                    <Button Grid.Column="1"
+                            Style="{StaticResource OutlineButtonStyle}"
+                            Command="{Binding ResetFiltersCommand}"
+                            Content="Сбросить фильтры"
+                            Padding="10,6"
+                            FontSize="11"
+                            Margin="8,0,0,0" />
+                </Grid>
+
+                <!-- FILTER_ROW2 -->
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="230" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Grid.Column="0">
+                        <TextBox Text="{Binding FilterFlightNumber, UpdateSourceTrigger=PropertyChanged}"
+                                 Height="32"
+                                 Padding="8,5"
+                                 FontSize="12"
+                                 VerticalContentAlignment="Center"
+                                 ToolTip="Поиск по номеру рейса, коду или городу" />
+                        <TextBlock Text="Номер рейса, код или город..."
+                                   IsHitTestVisible="False"
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   VerticalAlignment="Center"
+                                   Margin="10,0,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding FilterFlightNumber}" Value="">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+
+                    <CheckBox Grid.Column="1"
+                              Content="Фильтр по дате"
+                              IsChecked="{Binding FilterByDateEnabled}"
+                              FontSize="12"
+                              VerticalAlignment="Center"
+                              Margin="14,0,8,0" />
+
+                    <DatePicker Grid.Column="2"
+                                SelectedDate="{Binding FilterDate}"
+                                IsEnabled="{Binding FilterByDateEnabled}"
+                                Width="130"
+                                Height="32" />
+
+                    <StackPanel Grid.Column="3"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center">
+                        <Border Background="{StaticResource PrimaryLightBrush}" CornerRadius="5" Padding="8,4" Margin="0,0,5,0">
+                            <TextBlock Text="{Binding TotalFlightsText}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource PrimaryDarkBrush}" />
+                        </Border>
+                        <Border Background="#E8F5E9" CornerRadius="5" Padding="8,4" Margin="0,0,5,0">
+                            <TextBlock Text="{Binding ScheduledFlightsText}" FontSize="10" FontWeight="SemiBold" Foreground="#2E7D32" />
+                        </Border>
+                        <Border Background="#E3F2FD" CornerRadius="5" Padding="8,4" Margin="0,0,5,0">
+                            <TextBlock Text="{Binding DepartedFlightsText}" FontSize="10" FontWeight="SemiBold" Foreground="#1565C0" />
+                        </Border>
+                        <Border Background="#FFEBEE" CornerRadius="5" Padding="8,4">
+                            <TextBlock Text="{Binding CancelledFlightsText}" FontSize="10" FontWeight="SemiBold" Foreground="#C62828" />
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
         </Border>
 
-        <!-- 5. Таблица рейсов -->
-        <Border Grid.Row="4"
+        <!-- TABLE -->
+        <Border Grid.Row="5"
                 Background="{StaticResource SurfaceBrush}"
                 BorderBrush="{StaticResource SurfaceBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="10"
-                Padding="16">
-            <DataGrid ItemsSource="{Binding FilteredFlights}"
-                      AutoGenerateColumns="False"
-                      CanUserAddRows="False"
-                      IsReadOnly="True"
-                      HeadersVisibility="Column"
-                      GridLinesVisibility="Horizontal"
-                      HorizontalGridLinesBrush="#EEEEEE"
-                      Background="Transparent"
-                      BorderThickness="0"
-                      RowHeight="46">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Рейс" Binding="{Binding FlightNumber}" FontWeight="Bold" Width="100" />
-                    <DataGridTemplateColumn Header="Маршрут" Width="160">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type flights:FlightDetailsDto}">
-                                <StackPanel VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding OriginAirportCode}" FontWeight="Bold" Foreground="{StaticResource PrimaryDarkBrush}" />
-                                        <TextBlock Text=" ➔ " Foreground="{StaticResource TextSecondaryBrush}" />
-                                        <TextBlock Text="{Binding DestinationAirportCode}" FontWeight="Bold" Foreground="{StaticResource PrimaryDarkBrush}" />
+                Padding="10">
+            <Grid>
+                <DataGrid ItemsSource="{Binding FilteredFlights}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          IsReadOnly="True"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          HorizontalGridLinesBrush="#EEEEEE"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          RowHeight="58"
+                          ColumnHeaderHeight="34"
+                          FontSize="12">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="Рейс" Width="95">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="{x:Type vm:FlightAdminRowViewModel}">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding FlightNumber}"
+                                                   FontWeight="Bold"
+                                                   FontSize="13"
+                                                   Foreground="{StaticResource PrimaryDarkBrush}" />
+                                        <TextBlock Text="{Binding DepartureRelativeText}"
+                                                   FontSize="9"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   TextWrapping="Wrap" />
                                     </StackPanel>
-                                    <TextBlock Text="{Binding OriginCity, StringFormat='{}{0}...'}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
 
-                    <DataGridTemplateColumn Header="Воздушное судно" Width="180">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type flights:FlightDetailsDto}">
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding AircraftTailNumber}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding AircraftModel}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
-                                </StackPanel>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Маршрут" Width="*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="{x:Type vm:FlightAdminRowViewModel}">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding RouteText}"
+                                                   FontWeight="Bold"
+                                                   Foreground="{StaticResource PrimaryDarkBrush}" />
+                                        <TextBlock Text="{Binding CitiesText}"
+                                                   FontSize="10"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
 
-                    <DataGridTextColumn Header="Вылет" Binding="{Binding DepartureTime, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" Width="140" />
-                    <DataGridTextColumn Header="Прилёт" Binding="{Binding ArrivalTime, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" Width="140" />
+                        <DataGridTemplateColumn Header="Воздушное судно" Width="150">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="{x:Type vm:FlightAdminRowViewModel}">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding AircraftText}"
+                                                   FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding AircraftText}" />
+                                        <TextBlock Text="{Binding DurationText, StringFormat='В полёте: {0}'}"
+                                                   FontSize="10"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
 
-                    <DataGridTemplateColumn Header="Места (свободно)" Width="130">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type flights:FlightDetailsDto}">
-                                <TextBlock VerticalAlignment="Center" FontWeight="SemiBold">
-                                    <Run Text="{Binding AvailableSeats, Mode=OneWay}" Foreground="{StaticResource PrimaryDarkBrush}" />
-                                    <Run Text=" / " Foreground="{StaticResource TextSecondaryBrush}" />
-                                    <Run Text="{Binding TotalSeats, Mode=OneWay}" Foreground="{StaticResource TextSecondaryBrush}" />
-                                </TextBlock>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
+                        <!-- COLUMN4 -->
+                        <DataGridTemplateColumn Header="Вылет / прилёт" Width="125">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="{x:Type vm:FlightAdminRowViewModel}">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DepartureText}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding ArrivalText, StringFormat='→ {0}'}"
+                                                   FontSize="10"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
 
-                    <DataGridTemplateColumn Header="Статус" Width="130">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type flights:FlightDetailsDto}">
-                                <Border CornerRadius="4" Padding="6,3" HorizontalAlignment="Left">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Setter Property="Background" Value="#4CAF50" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Status}" Value="Departed">
-                                                    <Setter Property="Background" Value="#2196F3" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding Status}" Value="Cancelled">
-                                                    <Setter Property="Background" Value="#E53935" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <TextBlock Text="{Binding Status}" Foreground="White" FontSize="11" FontWeight="Bold" />
-                                </Border>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Места" Width="125">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="{x:Type vm:FlightAdminRowViewModel}">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding SeatsText}" FontSize="10" FontWeight="SemiBold" />
+                                        <ProgressBar Value="{Binding OccupancyPercent}"
+                                                     Maximum="100"
+                                                     Height="6"
+                                                     Margin="0,4,0,0"
+                                                     Foreground="{StaticResource PrimaryBrush}"
+                                                     Background="#E3F2FD"
+                                                     BorderThickness="0"
+                                                     ToolTip="Заполняемость борта" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
 
-                    <!-- Действия кассира/администратора -->
-                    <DataGridTemplateColumn Header="Действия" Width="260">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate DataType="{x:Type flights:FlightDetailsDto}">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <!-- Сменить борт -->
-                                    <Button Style="{StaticResource OutlineButtonStyle}"
-                                            Command="{Binding DataContext.OpenChangeAircraftCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"
-                                            Padding="8,4"
-                                            FontSize="11"
-                                            Margin="0,0,6,0">
-                                        <TextBlock Text="🔄 Борт" />
-                                    </Button>
-
-                                    <!-- Отменить рейс с 100% возвратом (TC-08) -->
-                                    <Button Command="{Binding DataContext.CancelFlightCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"
-                                            Padding="8,4"
-                                            FontSize="11">
-                                        <Button.Style>
-                                            <Style TargetType="Button" BasedOn="{StaticResource OutlineButtonStyle}">
-                                                <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
-                                                <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+                        <DataGridTemplateColumn Header="Статус" Width="112">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="{x:Type vm:FlightAdminRowViewModel}">
+                                    <Border CornerRadius="4" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#4CAF50" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Departed">
+                                                        <Setter Property="Background" Value="#2196F3" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Cancelled">
+                                                        <Setter Property="Background" Value="#E53935" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
                                             </Style>
-                                        </Button.Style>
-                                        <TextBlock Text="❌ Отменить (100%)" />
-                                    </Button>
-                                </StackPanel>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                </DataGrid.Columns>
-            </DataGrid>
+                                        </Border.Style>
+                                        <TextBlock Text="{Binding StatusText}"
+                                                   Foreground="White"
+                                                   FontSize="10"
+                                                   FontWeight="Bold" />
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- ACTIONS_COLUMN -->
+                        <DataGridTemplateColumn Header="Действия" Width="175">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate DataType="{x:Type vm:FlightAdminRowViewModel}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Style="{StaticResource OutlineButtonStyle}"
+                                                Command="{Binding DataContext.OpenChangeAircraftCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                IsEnabled="{Binding CanChangeAircraft}"
+                                                Padding="7,4"
+                                                FontSize="10"
+                                                Margin="0,0,5,0"
+                                                ToolTip="Заменить воздушное судно (TC-09/10)">
+                                            <TextBlock Text="🔄 Борт" />
+                                        </Button>
+
+                                        <Button Command="{Binding DataContext.CancelFlightCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                IsEnabled="{Binding CanCancel}"
+                                                Padding="7,4"
+                                                FontSize="10"
+                                                ToolTip="Отменить рейс с массовым 100% возвратом (TC-08)">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource OutlineButtonStyle}">
+                                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
+                                                </Style>
+                                            </Button.Style>
+                                            <TextBlock Text="❌ Отменить" />
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <TextBlock Text="Рейсы не найдены. Измените параметры фильтра или создайте новый рейс."
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontSize="13"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           TextWrapping="Wrap"
+                           MaxWidth="360"
+                           TextAlignment="Center"
+                           Visibility="{Binding HasNoFlights, Converter={StaticResource BoolToVisConverter}}" />
+            </Grid>
         </Border>
     </Grid>
 </UserControl>
