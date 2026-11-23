@@ -62,6 +62,7 @@ public class NavigationService : INavigationService
         var emulatorWindow = _serviceProvider.GetRequiredService<EmulatorWindow>();
         emulatorWindow.DataContext = emulatorVm;
         emulatorVm.CloseRequested += () => emulatorWindow.Close();
+        emulatorWindow.Closed += (_, _) => emulatorVm.Dispose();
 
         if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
         {

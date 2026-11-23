@@ -4,7 +4,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:AirlineTicketOffice.Wpf.ViewModels"
-             xmlns:reports="clr-namespace:AirlineTicketOffice.Core.Contracts.Reports;assembly=AirlineTicketOffice.Core"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance vm:ReportsViewModel}">
 
@@ -14,8 +13,8 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="FontSize" Value="13" />
-            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="12,7" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
@@ -64,6 +63,29 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+
+        <!-- Стиль кнопок быстрого выбора периода -->
+        <Style x:Key="QuickPeriodButtonStyle" TargetType="Button" BasedOn="{StaticResource OutlineButtonStyle}">
+            <Setter Property="Padding" Value="9,5" />
+            <Setter Property="FontSize" Value="11" />
+        </Style>
+
+        <!-- Компактная карточка сводного показателя -->
+        <Style x:Key="MetricCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource BackgroundBrush}" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="14,10" />
+        </Style>
+
+        <!-- Оверлей поверх области отчёта по условию из ViewModel -->
+        <Style x:Key="OverlayBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource SurfaceBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="32" />
+            <Setter Property="Visibility" Value="Collapsed" />
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -83,32 +105,51 @@
                 BorderThickness="1"
                 CornerRadius="10"
                 Padding="20,16"
-                Margin="0,0,0,14">
+                Margin="0,0,0,12">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!-- Заголовок и кнопки экспорта -->
+                <!-- Заголовок, период и кнопки -->
                 <Grid Grid.Row="0" Margin="0,0,0,14">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="📊  " FontSize="20" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
-                        <TextBlock Text="Аналитические отчёты (W-14)"
-                                   FontSize="18"
-                                   FontWeight="Bold"
-                                   Foreground="{StaticResource PrimaryDarkBrush}"
-                                   VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="📊  " FontSize="20" Foreground="{StaticResource PrimaryBrush}" VerticalAlignment="Center" />
+                            <TextBlock Text="Аналитические отчёты (W-14)"
+                                       FontSize="18"
+                                       FontWeight="Bold"
+                                       Foreground="{StaticResource PrimaryDarkBrush}"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,12,0" />
+                            <Border Background="{StaticResource PrimaryLightBrush}" CornerRadius="6" Padding="8,3" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding ReportPeriodText}"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource PrimaryDarkBrush}" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding ReportSubtitle}"
+                                   FontSize="12"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,5,0,0"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding VirtualNowText}"
+                                   FontSize="11"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Margin="0,3,0,0" />
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Style="{StaticResource PrimaryButtonStyle}"
                                 Command="{Binding GenerateReportCommand}"
+                                IsEnabled="{Binding CanViewReports}"
                                 Padding="16,8"
                                 Margin="0,0,10,0">
                             <StackPanel Orientation="Horizontal">
@@ -119,6 +160,7 @@
 
                         <Button Style="{StaticResource OutlineButtonStyle}"
                                 Command="{Binding PrintReportCommand}"
+                                IsEnabled="{Binding HasReportData}"
                                 Padding="16,8">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="🖨  " />
@@ -128,54 +170,52 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- Выбор дат и переключатель вкладок отчёта -->
+                <!-- Период и переключатель типов отчёта -->
                 <Grid Grid.Row="1">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="24" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
 
-                    <!-- Выбор периода дат -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <StackPanel Margin="0,0,12,0">
-                            <TextBlock Text="Период с:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
-                            <DatePicker SelectedDate="{Binding FromDate}" Width="130" Height="34" />
+                    <WrapPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="0,0,0,10">
+                        <StackPanel Margin="0,0,10,0">
+                            <TextBlock Text="Период с:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                            <DatePicker SelectedDate="{Binding FromDate}" Width="128" Height="32" />
                         </StackPanel>
 
-                        <StackPanel>
-                            <TextBlock Text="по:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,2" />
-                            <DatePicker SelectedDate="{Binding ToDate}" Width="130" Height="34" />
+                        <StackPanel Margin="0,0,10,0">
+                            <TextBlock Text="по:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                            <DatePicker SelectedDate="{Binding ToDate}" Width="128" Height="32" />
                         </StackPanel>
-                    </StackPanel>
 
-                    <!-- Переключатели типов отчётов -->
-                    <Border Grid.Column="2"
+                        <StackPanel VerticalAlignment="Bottom">
+                            <TextBlock Text="Быстрый период:" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,3" />
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="Сутки" Style="{StaticResource QuickPeriodButtonStyle}"
+                                        Command="{Binding SetQuickPeriodCommand}" CommandParameter="0" Margin="0,0,6,0" />
+                                <Button Content="7 дней" Style="{StaticResource QuickPeriodButtonStyle}"
+                                        Command="{Binding SetQuickPeriodCommand}" CommandParameter="7" Margin="0,0,6,0" />
+                                <Button Content="30 дней" Style="{StaticResource QuickPeriodButtonStyle}"
+                                        Command="{Binding SetQuickPeriodCommand}" CommandParameter="30" />
+                            </StackPanel>
+                        </StackPanel>
+                    </WrapPanel>
+
+                    <Border Grid.Row="1"
                             Background="{StaticResource BackgroundBrush}"
                             CornerRadius="8"
                             Padding="4"
-                            HorizontalAlignment="Right"
+                            HorizontalAlignment="Left"
                             VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
-                            <Button Content="Загрузка рейсов"
-                                    Style="{StaticResource TypeFlightLoadStyle}"
-                                    Command="{Binding SelectReportTypeCommand}"
-                                    CommandParameter="0"
-                                    Margin="0,0,4,0" />
-                            <Button Content="Выручка по направлениям"
-                                    Style="{StaticResource TypeRouteRevenueStyle}"
-                                    Command="{Binding SelectReportTypeCommand}"
-                                    CommandParameter="1"
-                                    Margin="0,0,4,0" />
-                            <Button Content="Продажи по каналам"
-                                    Style="{StaticResource TypeChannelSalesStyle}"
-                                    Command="{Binding SelectReportTypeCommand}"
-                                    CommandParameter="2"
-                                    Margin="0,0,4,0" />
-                            <Button Content="Статистика возвратов"
-                                    Style="{StaticResource TypeRefundStatsStyle}"
-                                    Command="{Binding SelectReportTypeCommand}"
-                                    CommandParameter="3" />
+                            <Button Content="Загрузка рейсов" Style="{StaticResource TypeFlightLoadStyle}"
+                                    Command="{Binding SelectReportTypeCommand}" CommandParameter="0" Margin="0,0,4,0" />
+                            <Button Content="Выручка направлений" Style="{StaticResource TypeRouteRevenueStyle}"
+                                    Command="{Binding SelectReportTypeCommand}" CommandParameter="1" Margin="0,0,4,0" />
+                            <Button Content="Продажи по каналам" Style="{StaticResource TypeChannelSalesStyle}"
+                                    Command="{Binding SelectReportTypeCommand}" CommandParameter="2" Margin="0,0,4,0" />
+                            <Button Content="Статистика возвратов" Style="{StaticResource TypeRefundStatsStyle}"
+                                    Command="{Binding SelectReportTypeCommand}" CommandParameter="3" />
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -189,7 +229,7 @@
                 BorderThickness="1"
                 CornerRadius="8"
                 Padding="16,10"
-                Margin="0,0,0,14">
+                Margin="0,0,0,12">
             <Border.Style>
                 <Style TargetType="Border">
                     <Setter Property="Visibility" Value="Visible" />
@@ -217,7 +257,8 @@
 
         <!-- 3. Основная область отображения отчёта -->
         <Grid Grid.Row="2">
-            <!-- 3.1. ОТЧЁТ: ЗАГРУЗКА РЕЙСОВ -->
+
+            <!-- 3.1. Отчёт по загрузке рейсов -->
             <Border Background="{StaticResource SurfaceBrush}"
                     BorderBrush="{StaticResource SurfaceBorderBrush}"
                     BorderThickness="1"
@@ -236,56 +277,56 @@
 
                 <Grid>
                     <Grid.RowDefinitions>
-                        <!-- Сводные карточки -->
                         <RowDefinition Height="Auto" />
-                        <!-- Таблица деталей -->
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <!-- Сводные показатели загрузки -->
-                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <Grid Grid.Row="0" Margin="0,0,0,14">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BackgroundBrush}" CornerRadius="8" Padding="14,10">
+                        <Border Grid.Column="0" Style="{StaticResource MetricCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Всего рейсов" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
-                                <TextBlock Text="{Binding FlightLoadReport.TotalFlights}" FontWeight="Bold" FontSize="18" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,0" />
+                                <TextBlock Text="Рейсов в выборке" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                                <TextBlock Text="{Binding FlightLoadReport.TotalFlights}" FontWeight="Bold" FontSize="18"
+                                           Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="{StaticResource BackgroundBrush}" CornerRadius="8" Padding="14,10">
+                        <Border Grid.Column="2" Style="{StaticResource MetricCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Вместимость (мест)" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
-                                <TextBlock Text="{Binding FlightLoadReport.TotalCapacity}" FontWeight="Bold" FontSize="18" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,0" />
+                                <TextBlock Text="Мест всего" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                                <TextBlock Text="{Binding FlightLoadReport.TotalCapacity}" FontWeight="Bold" FontSize="18"
+                                           Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="4" Background="{StaticResource BackgroundBrush}" CornerRadius="8" Padding="14,10">
+                        <Border Grid.Column="4" Style="{StaticResource MetricCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Продано мест" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
-                                <TextBlock Text="{Binding FlightLoadReport.TotalSoldSeats}" FontWeight="Bold" FontSize="18" Foreground="{StaticResource PrimaryDarkBrush}" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding FlightLoadReport.TotalSoldSeats}" FontWeight="Bold" FontSize="18"
+                                           Foreground="{StaticResource PrimaryDarkBrush}" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
                         <Border Grid.Column="6" Background="#E8F5E9" CornerRadius="8" Padding="14,10">
                             <StackPanel>
                                 <TextBlock Text="Средняя загрузка" FontSize="11" FontWeight="SemiBold" Foreground="#2E7D32" />
-                                <TextBlock Text="{Binding FlightLoadReport.AverageLoadPercentage, StringFormat='{}{0:F1} %'}" FontWeight="Bold" FontSize="18" Foreground="#2E7D32" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding FlightLoadReport.AverageLoadPercentage, StringFormat='{}{0:F1} %'}"
+                                           FontWeight="Bold" FontSize="18" Foreground="#2E7D32" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
                     </Grid>
 
-                    <!-- Таблица деталей по рейсам -->
                     <DataGrid Grid.Row="1"
-                              ItemsSource="{Binding FlightLoadReport.Items}"
+                              ItemsSource="{Binding FlightLoadRows}"
                               AutoGenerateColumns="False"
                               CanUserAddRows="False"
                               IsReadOnly="True"
@@ -296,20 +337,60 @@
                               BorderThickness="0"
                               RowHeight="38">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Рейс" Binding="{Binding FlightNumber}" FontWeight="Bold" Width="100" />
-                            <DataGridTextColumn Header="Маршрут" Binding="{Binding Route}" FontWeight="SemiBold" Width="160" />
-                            <DataGridTextColumn Header="Вылет" Binding="{Binding DepartureTime, StringFormat='{}{0:dd.MM.yyyy HH:mm}'}" Width="150" />
-                            <DataGridTextColumn Header="Вместимость" Binding="{Binding Capacity}" Width="120" />
-                            <DataGridTextColumn Header="Бизнес (продано)" Binding="{Binding BusinessSoldSeats}" Width="140" />
-                            <DataGridTextColumn Header="Эконом (продано)" Binding="{Binding EconomySoldSeats}" Width="140" />
-                            <DataGridTextColumn Header="Всего продано" Binding="{Binding TotalSoldSeats}" FontWeight="Bold" Width="130" />
-                            <DataGridTextColumn Header="Загрузка (%)" Binding="{Binding LoadPercentage, StringFormat='{}{0:F1} %'}" FontWeight="Bold" Width="120" />
+                            <DataGridTextColumn Header="Рейс" Binding="{Binding FlightNumber}" FontWeight="Bold" Width="90" />
+                            <DataGridTextColumn Header="Маршрут" Binding="{Binding Route}" FontWeight="SemiBold" Width="110" />
+                            <DataGridTextColumn Header="Вылет" Binding="{Binding DepartureText}" Width="135" />
+                            <DataGridTextColumn Header="Воздушное судно" Binding="{Binding AircraftModel}" Width="145" />
+                            <DataGridTextColumn Header="Всего мест" Binding="{Binding TotalSeats}" Width="85" />
+                            <DataGridTextColumn Header="Продано" Binding="{Binding SeatsText}" FontWeight="SemiBold" Width="90" />
+                            <DataGridTextColumn Header="Бизнес (продано/всего)" Binding="{Binding BusinessLoadText}" Width="175" />
+                            <DataGridTextColumn Header="Эконом (продано/всего)" Binding="{Binding EconomyLoadText}" Width="175" />
+                            <DataGridTemplateColumn Header="Загрузка" Width="150">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Grid VerticalAlignment="Center" ToolTip="{Binding LoadLevelText}">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="46" />
+                                            </Grid.ColumnDefinitions>
+                                            <ProgressBar Grid.Column="0"
+                                                         Value="{Binding LoadPercentage, Mode=OneWay}"
+                                                         Maximum="100"
+                                                         Height="8"
+                                                         VerticalAlignment="Center"
+                                                         Foreground="{StaticResource PrimaryBrush}"
+                                                         Background="#E3F2FD"
+                                                         BorderThickness="0" />
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding LoadPercentText}"
+                                                       FontWeight="Bold"
+                                                       FontSize="11"
+                                                       HorizontalAlignment="Right"
+                                                       VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsHighLoad}" Value="True">
+                                                                <Setter Property="Foreground" Value="#2E7D32" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsLowLoad}" Value="True">
+                                                                <Setter Property="Foreground" Value="#EF6C00" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
             </Border>
 
-            <!-- 3.2. ОТЧЁТ: ВЫРУЧКА ПО НАПРАВЛЕНИЯМ -->
+            <!-- 3.2. Отчёт по выручке направлений -->
             <Border Background="{StaticResource SurfaceBrush}"
                     BorderBrush="{StaticResource SurfaceBorderBrush}"
                     BorderThickness="1"
@@ -332,50 +413,52 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <!-- Сводные показатели выручки -->
-                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <Grid Grid.Row="0" Margin="0,0,0,14">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BackgroundBrush}" CornerRadius="8" Padding="14,10">
+                        <Border Grid.Column="0" Style="{StaticResource MetricCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Билетов продано" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
-                                <TextBlock Text="{Binding RouteRevenueReport.TotalTicketsSold}" FontWeight="Bold" FontSize="18" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding RouteRevenueReport.TotalTicketsSold}" FontWeight="Bold" FontSize="18"
+                                           Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="{StaticResource BackgroundBrush}" CornerRadius="8" Padding="14,10">
+                        <Border Grid.Column="2" Style="{StaticResource MetricCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Валовая выручка" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
-                                <TextBlock Text="{Binding RouteRevenueReport.TotalGrossRevenue, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" FontSize="18" Foreground="{StaticResource PrimaryDarkBrush}" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding RouteRevenueReport.TotalGrossRevenue, StringFormat='{}{0:N0} ₽'}"
+                                           FontWeight="Bold" FontSize="18" Foreground="{StaticResource PrimaryDarkBrush}" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
                         <Border Grid.Column="4" Background="#FFEBEE" CornerRadius="8" Padding="14,10">
                             <StackPanel>
                                 <TextBlock Text="Сумма возвратов" FontSize="11" Foreground="{StaticResource DangerBrush}" />
-                                <TextBlock Text="{Binding RouteRevenueReport.TotalRefundedAmount, StringFormat='-{}{0:N0} ₽'}" FontWeight="Bold" FontSize="18" Foreground="{StaticResource DangerBrush}" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding RouteRevenueReport.TotalRefundedAmount, StringFormat='-{0:N0} ₽'}"
+                                           FontWeight="Bold" FontSize="18" Foreground="{StaticResource DangerBrush}" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
                         <Border Grid.Column="6" Background="#E8F5E9" CornerRadius="8" Padding="14,10">
                             <StackPanel>
                                 <TextBlock Text="Чистая выручка" FontSize="11" FontWeight="SemiBold" Foreground="#2E7D32" />
-                                <TextBlock Text="{Binding RouteRevenueReport.TotalNetRevenue, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" FontSize="18" Foreground="#2E7D32" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding RouteRevenueReport.TotalNetRevenue, StringFormat='{}{0:N0} ₽'}"
+                                           FontWeight="Bold" FontSize="18" Foreground="#2E7D32" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
                     </Grid>
 
-                    <!-- Таблица по направлениям -->
                     <DataGrid Grid.Row="1"
-                              ItemsSource="{Binding RouteRevenueReport.Items}"
+                              ItemsSource="{Binding RouteRevenueRows}"
                               AutoGenerateColumns="False"
                               CanUserAddRows="False"
                               IsReadOnly="True"
@@ -384,19 +467,39 @@
                               HorizontalGridLinesBrush="#EEEEEE"
                               Background="Transparent"
                               BorderThickness="0"
-                              RowHeight="38">
+                              RowHeight="40">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Маршрут перелёта" Binding="{Binding Route}" FontWeight="Bold" Width="180" />
-                            <DataGridTextColumn Header="Продано билетов" Binding="{Binding TicketsSold}" Width="140" />
-                            <DataGridTextColumn Header="Валовая выручка" Binding="{Binding GrossRevenue, StringFormat='{}{0:N0} ₽'}" FontWeight="SemiBold" Width="*" />
-                            <DataGridTextColumn Header="Сумма возвратов" Binding="{Binding RefundedAmount, StringFormat='{}{0:N0} ₽'}" Foreground="{StaticResource DangerBrush}" Width="*" />
-                            <DataGridTextColumn Header="Чистая выручка" Binding="{Binding NetRevenue, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" Foreground="#2E7D32" Width="*" />
+                            <DataGridTextColumn Header="Маршрут" Binding="{Binding Route}" FontWeight="Bold" Width="120" />
+                            <DataGridTextColumn Header="Города направления" Binding="{Binding CitiesText}" Width="240" />
+                            <DataGridTextColumn Header="Продано билетов" Binding="{Binding TicketsSold}" Width="125" />
+                            <DataGridTextColumn Header="Валовая выручка" Binding="{Binding GrossRevenueText}" FontWeight="SemiBold" Width="*" />
+                            <DataGridTextColumn Header="Сумма возвратов" Binding="{Binding RefundedAmountText}"
+                                                Foreground="{StaticResource DangerBrush}" Width="*" />
+                            <DataGridTemplateColumn Header="Чистая выручка" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding NetRevenueText}" FontWeight="Bold" VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="#2E7D32" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsLossMaking}" Value="True">
+                                                            <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Средний билет" Binding="{Binding AverageTicketPriceText}" Width="130" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
             </Border>
 
-            <!-- 3.3. ОТЧЁТ: ПРОДАЖИ ПО КАНАЛАМ -->
+            <!-- 3.3. Отчёт по продажам в разрезе каналов -->
             <Border Background="{StaticResource SurfaceBrush}"
                     BorderBrush="{StaticResource SurfaceBorderBrush}"
                     BorderThickness="1"
@@ -419,41 +522,56 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <!-- Сводные показатели по каналам -->
-                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <Grid Grid.Row="0" Margin="0,0,0,14">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BackgroundBrush}" CornerRadius="8" Padding="14,10">
+                        <Border Grid.Column="0" Style="{StaticResource MetricCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Всего заказов" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
-                                <TextBlock Text="{Binding ChannelSalesReport.TotalOrders}" FontWeight="Bold" FontSize="18" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding ChannelSalesReport.TotalOrders}" FontWeight="Bold" FontSize="18"
+                                           Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="2" Background="{StaticResource BackgroundBrush}" CornerRadius="8" Padding="14,10">
+                        <Border Grid.Column="2" Style="{StaticResource MetricCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Всего билетов" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
-                                <TextBlock Text="{Binding ChannelSalesReport.TotalTickets}" FontWeight="Bold" FontSize="18" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding ChannelSalesReport.TotalTickets}" FontWeight="Bold" FontSize="18"
+                                           Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
                         <Border Grid.Column="4" Background="#E8F5E9" CornerRadius="8" Padding="14,10">
                             <StackPanel>
                                 <TextBlock Text="Общая выручка каналов" FontSize="11" FontWeight="SemiBold" Foreground="#2E7D32" />
-                                <TextBlock Text="{Binding ChannelSalesReport.TotalRevenue, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" FontSize="18" Foreground="#2E7D32" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding ChannelSalesReport.TotalRevenue, StringFormat='{}{0:N0} ₽'}"
+                                           FontWeight="Bold" FontSize="18" Foreground="#2E7D32" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="6" Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Билеты по каналам" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <TextBlock Text="Касса: " FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                                    <TextBlock Text="{Binding ChannelSalesReport.CashierTicketsCount}" FontSize="11" FontWeight="Bold" />
+                                    <TextBlock Text="  •  Самообслуживание: " FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                                    <TextBlock Text="{Binding ChannelSalesReport.SelfServiceTicketsCount}" FontSize="11" FontWeight="Bold" />
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                     </Grid>
 
-                    <!-- Таблица по каналам -->
                     <DataGrid Grid.Row="1"
-                              ItemsSource="{Binding ChannelSalesReport.Items}"
+                              ItemsSource="{Binding ChannelSalesRows}"
                               AutoGenerateColumns="False"
                               CanUserAddRows="False"
                               IsReadOnly="True"
@@ -464,17 +582,28 @@
                               BorderThickness="0"
                               RowHeight="44">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Канал оформления" Binding="{Binding ChannelName}" FontWeight="Bold" Width="220" />
-                            <DataGridTextColumn Header="Заказов" Binding="{Binding OrdersCount}" Width="140" />
-                            <DataGridTextColumn Header="Билетов" Binding="{Binding TicketsCount}" Width="140" />
-                            <DataGridTextColumn Header="Выручка" Binding="{Binding Revenue, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" Width="*" />
-                            <DataGridTextColumn Header="Доля в выручке (%)" Binding="{Binding RevenueSharePercentage, StringFormat='{}{0:F1} %'}" FontWeight="SemiBold" Foreground="{StaticResource PrimaryDarkBrush}" Width="180" />
+                            <DataGridTemplateColumn Header="Канал оформления" Width="230">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding ChannelIcon}" FontSize="15" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding ChannelName}" FontWeight="Bold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Заказов" Binding="{Binding OrdersCount}" Width="110" />
+                            <DataGridTextColumn Header="Билетов" Binding="{Binding TicketsCount}" Width="110" />
+                            <DataGridTextColumn Header="Выручка" Binding="{Binding TotalSalesAmountText}" FontWeight="Bold" Width="*" />
+                            <DataGridTextColumn Header="Доля в выручке" Binding="{Binding RevenueShareText}" FontWeight="SemiBold"
+                                                Foreground="{StaticResource PrimaryDarkBrush}" Width="150" />
+                            <DataGridTextColumn Header="Средний билет" Binding="{Binding AverageTicketText}" Width="140" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
             </Border>
 
-            <!-- 3.4. ОТЧЁТ: СТАТИСТИКА ВОЗВРАТОВ -->
+            <!-- 3.4. Отчёт по статистике возвратов -->
             <Border Background="{StaticResource SurfaceBrush}"
                     BorderBrush="{StaticResource SurfaceBorderBrush}"
                     BorderThickness="1"
@@ -497,41 +626,56 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <!-- Сводные показатели возвратов -->
-                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <Grid Grid.Row="0" Margin="0,0,0,14">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="{StaticResource BackgroundBrush}" CornerRadius="8" Padding="14,10">
+                        <Border Grid.Column="0" Style="{StaticResource MetricCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Всего возвратов (шт.)" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
-                                <TextBlock Text="{Binding RefundStatisticsReport.TotalRefundsCount}" FontWeight="Bold" FontSize="18" Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,0" />
+                                <TextBlock Text="Всего возвратов" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                                <TextBlock Text="{Binding RefundStatisticsReport.TotalRefundsCount}" FontWeight="Bold" FontSize="18"
+                                           Foreground="{StaticResource TextPrimaryBrush}" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
                         <Border Grid.Column="2" Background="#FFEBEE" CornerRadius="8" Padding="14,10">
                             <StackPanel>
                                 <TextBlock Text="Выплачено клиентам" FontSize="11" Foreground="{StaticResource DangerBrush}" />
-                                <TextBlock Text="{Binding RefundStatisticsReport.TotalRefundAmount, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" FontSize="18" Foreground="{StaticResource DangerBrush}" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding RefundStatisticsReport.TotalRefundAmount, StringFormat='{}{0:N0} ₽'}"
+                                           FontWeight="Bold" FontSize="18" Foreground="{StaticResource DangerBrush}" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
                         <Border Grid.Column="4" Background="#E8F5E9" CornerRadius="8" Padding="14,10">
                             <StackPanel>
                                 <TextBlock Text="Удержано штрафов" FontSize="11" FontWeight="SemiBold" Foreground="#2E7D32" />
-                                <TextBlock Text="{Binding RefundStatisticsReport.TotalPenaltyAmount, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" FontSize="18" Foreground="#2E7D32" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding RefundStatisticsReport.TotalPenaltyAmount, StringFormat='{}{0:N0} ₽'}"
+                                           FontWeight="Bold" FontSize="18" Foreground="#2E7D32" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="6" Style="{StaticResource MetricCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="По основаниям" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <TextBlock Text="Добровольные: " FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                                    <TextBlock Text="{Binding RefundStatisticsReport.VoluntaryRefundsCount}" FontSize="11" FontWeight="Bold" />
+                                    <TextBlock Text="  •  Отмена рейса: " FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" />
+                                    <TextBlock Text="{Binding RefundStatisticsReport.FlightCancellationRefundsCount}" FontSize="11" FontWeight="Bold" />
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                     </Grid>
 
-                    <!-- Таблица причин возвратов -->
                     <DataGrid Grid.Row="1"
-                              ItemsSource="{Binding RefundStatisticsReport.Items}"
+                              ItemsSource="{Binding RefundStatisticsRows}"
                               AutoGenerateColumns="False"
                               CanUserAddRows="False"
                               IsReadOnly="True"
@@ -542,13 +686,101 @@
                               BorderThickness="0"
                               RowHeight="44">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Основание / Причина возврата" Binding="{Binding ReasonDescription}" FontWeight="Bold" Width="260" />
-                            <DataGridTextColumn Header="Возвращено билетов" Binding="{Binding RefundsCount}" Width="160" />
-                            <DataGridTextColumn Header="Сумма выплат клиентам" Binding="{Binding RefundAmount, StringFormat='{}{0:N0} ₽'}" FontWeight="Bold" Foreground="{StaticResource DangerBrush}" Width="*" />
-                            <DataGridTextColumn Header="Сумма удержанных штрафов" Binding="{Binding PenaltyAmount, StringFormat='{}{0:N0} ₽'}" FontWeight="SemiBold" Foreground="#2E7D32" Width="*" />
+                            <DataGridTemplateColumn Header="Основание возврата" Width="260">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding ReasonIcon}" FontSize="15" Margin="0,0,8,0" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding ReasonName}" FontWeight="Bold" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Количество возвратов" Binding="{Binding RefundsCount}" Width="170" />
+                            <DataGridTextColumn Header="Выплачено клиентам" Binding="{Binding TotalRefundAmountText}" FontWeight="Bold"
+                                                Foreground="{StaticResource DangerBrush}" Width="*" />
+                            <DataGridTextColumn Header="Удержано штрафов" Binding="{Binding TotalPenaltyAmountText}" FontWeight="SemiBold"
+                                                Foreground="#2E7D32" Width="*" />
+                            <DataGridTextColumn Header="Доля штрафов" Binding="{Binding PenaltyShareText}" Width="130" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
+            </Border>
+
+            <!-- 3.5. Оверлей отсутствия данных -->
+            <Border>
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource OverlayBorderStyle}">
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding HasReportData}" Value="False" />
+                                    <Condition Binding="{Binding IsLoading}" Value="False" />
+                                    <Condition Binding="{Binding IsAccessDenied}" Value="False" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520">
+                    <TextBlock Text="📭" FontSize="42" HorizontalAlignment="Center" Margin="0,0,0,12" />
+                    <TextBlock Text="Данные отчёта отсутствуют"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource PrimaryDarkBrush}"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8" />
+                    <TextBlock Text="{Binding EmptyStateMessage}"
+                               FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- 3.6. Оверлей отказа в доступе -->
+            <Border>
+                <Border.Style>
+                    <Style TargetType="Border" BasedOn="{StaticResource OverlayBorderStyle}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsAccessDenied}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560">
+                    <TextBlock Text="🔒" FontSize="42" HorizontalAlignment="Center" Margin="0,0,0,12" />
+                    <TextBlock Text="Раздел недоступен для текущей роли"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource DangerBrush}"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8" />
+                    <TextBlock Text="{Binding AccessDeniedMessage}"
+                               FontSize="12"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- 3.7. Индикатор формирования отчёта -->
+            <Border Background="#E6FFFFFF"
+                    BorderBrush="{StaticResource SurfaceBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisConverter}}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ProgressBar IsIndeterminate="True" Width="220" Height="6" Foreground="{StaticResource PrimaryBrush}"
+                                 Background="#E3F2FD" BorderThickness="0" Margin="0,0,0,12" />
+                    <TextBlock Text="Формирование отчёта…"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource PrimaryDarkBrush}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
             </Border>
         </Grid>
     </Grid>

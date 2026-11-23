@@ -213,6 +213,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void SwitchRole()
     {
         _sessionService.CloseSession();
+        Dispose();
         _navigationService.OpenRoleSelectionWindow();
     }
 
@@ -474,6 +475,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         _flightsAdminViewModel?.Dispose();
         _tariffsAdminViewModel?.Dispose();
+        _reportsViewModel?.Dispose();
+        _auditLogViewModel?.Dispose();
 
         GC.SuppressFinalize(this);
     }
